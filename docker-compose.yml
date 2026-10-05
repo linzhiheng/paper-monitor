@@ -1,0 +1,13 @@
+services:
+  rss-paper:
+    build:
+      context: .
+    image: rss-paper-monitor:local
+    working_dir: /app
+    restart: "no"
+    environment:
+      TZ: ${TZ:-Asia/Tokyo}
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./output:/app/output

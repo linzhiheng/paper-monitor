@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+
+# R session/workspace files
+.RData
+.Rhistory
+.Rproj.user/
+
+# Local secrets (API keys)
+.Renviron
+.env
+config/llm_config.json
+config/llm_backends.json
+
+# Runtime-generated state
+config/feed_status.json
+data/
+output/
+dist/
+
+# Claude Code local settings
+.claude/settings.local.json

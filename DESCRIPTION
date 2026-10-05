@@ -1,0 +1,11 @@
+Package: PaperMonitor
+Title: Daily Academic Paper RSS Monitoring and LLM Scoring Pipeline
+Version: 0.1.0
+Imports:
+    xml2,
+    dplyr,
+    purrr,
+    httr2,
+    jsonlite,
+    tibble,
+    stringr

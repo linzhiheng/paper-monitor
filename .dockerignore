@@ -1,0 +1,17 @@
+.git/
+.claude/
+.DS_Store
+.RData
+.Rhistory
+.Rproj.user/
+.Renviron
+.env
+.env.*
+archive/
+data/
+output/
+recommendations.csv
+tests/
+config/*.json
+config/feed_status.json
+!config/template.md

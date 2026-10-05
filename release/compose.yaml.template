@@ -1,0 +1,11 @@
+services:
+  rss-paper:
+    image: __IMAGE_TAG__
+    working_dir: /app
+    restart: "no"
+    environment:
+      TZ: ${TZ:-Asia/Tokyo}
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./output:/app/output
