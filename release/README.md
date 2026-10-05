@@ -63,5 +63,12 @@ Generated Markdown appears in `output/`; history is in
 `.env` and edit `TZ` before running. Logs are available with
 `docker compose logs rss-paper`.
 
+Settings, history, and digests live in `config/`, `data/`, and `output/`
+next to this README (mounted into the container at `/app/config`,
+`/app/data`, `/app/output`). To keep them somewhere else, edit the
+left-hand side of the `volumes:` entries in `compose.yaml` (the container
+paths must stay unchanged), or move only the digests via the output folder
+setting. See `INSTALL_AND_USAGE.md` for details.
+
 Do not run the program in an OrbStack `orb-wormhole-temp-*` terminal. Use the
 platform script or `docker compose` from this package directory.

@@ -157,6 +157,34 @@ To back up everything you care about, copy `config/`, `data/`, and
 `output/`. To move to another computer, copy those folders into a fresh
 package on that machine.
 
+### Moving the folders elsewhere
+
+The three folders are bind-mounted into the container at `/app/config`,
+`/app/data`, and `/app/output` (see `compose.yaml`). Two ways to relocate
+them:
+
+- **Digests only** — in Output settings, change the output folder. It must
+  remain a container path; `/app/output` is the default.
+- **Any or all folders** — edit the left-hand side of the `volumes:`
+  entries in `compose.yaml` to absolute paths on your computer. The
+  right-hand container paths must stay as they are. For example, to write
+  digests straight into an Obsidian vault (macOS):
+
+  ```yaml
+  volumes:
+    - ./config:/app/config
+    - ./data:/app/data
+    - /Users/<you>/Documents/ObsidianVault/PaperDigests:/app/output
+  ```
+
+Notes:
+
+- Create the target folders before running.
+- A package update brings a fresh `compose.yaml`, so re-apply your edits
+  after upgrading.
+- Absolute paths no longer travel with the package folder; relative paths
+  (starting with `./`) always stay inside it.
+
 ## 6. Changing settings later
 
 Run the setup command again at any time. It opens the same menu, where you
