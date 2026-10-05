@@ -20,3 +20,6 @@ dist/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Test suite is kept outside the repository
+tests/

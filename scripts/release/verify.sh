@@ -22,6 +22,9 @@ done
 [[ -d "$artifact_dir/images" && -d "$package_dir/reports" ]] || fail "release directories are incomplete"
 
 root_dir="$(cd "$(dirname "$0")/../.." && pwd)"
+# The test suite is intentionally not tracked in git; it must exist
+# locally for the packaged-container test pass below.
+[[ -d "$root_dir/tests" ]] || fail "tests directory is missing locally (the test suite is intentionally not tracked in git)"
 # shellcheck source=/dev/null
 source "$root_dir/release/tool-images.env"
 [[ -n "${SYFT_IMAGE:-}" && -n "${TRIVY_IMAGE:-}" && -n "${HTTP_ECHO_IMAGE:-}" ]] || fail "tool image configuration is incomplete"

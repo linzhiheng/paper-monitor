@@ -28,7 +28,7 @@ tag_commit="$(git rev-parse "$tag^{commit}" 2>/dev/null || true)"
 release_paths=(
   .dockerignore .env.example .gitignore DESCRIPTION Dockerfile LICENSE
   Paper_Monitor.R README.md R config/template.md docker-compose.yml renv.lock
-  release scripts/release tests
+  release scripts/release
 )
 for path in "${release_paths[@]}"; do
   git ls-files --error-unmatch "$path" >/dev/null 2>&1 || fail "release path is not tracked: $path"
