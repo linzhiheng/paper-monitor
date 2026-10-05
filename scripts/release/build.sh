@@ -101,7 +101,7 @@ scripts/release/verify.sh --artifact-dir "$work_dir" --package-dir "$package_dir
   cd "$dist_dir"
   zip -qr "$zip_path" "$release_name"
 )
-shasum -a 256 "$zip_path" > "$outer_checksum"
+( cd "$dist_dir" && shasum -a 256 "$release_name.zip" ) > "$outer_checksum"
 
 echo "Release package: $zip_path"
 echo "ZIP checksum: $outer_checksum"
