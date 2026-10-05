@@ -1,5 +1,7 @@
 # Paper Monitor v0.1.0 offline package
 
+__PACKAGE_DESCRIPTION__
+
 This package runs one paper-monitoring cycle at a time. It does not contain
 your API key, RSS feeds, research profile, recommendation history, or output.
 
@@ -14,10 +16,10 @@ For step-by-step installation and usage instructions, see
 - Internet access is needed when the application fetches RSS feeds or calls a
   cloud LLM. Loading the supplied image itself is offline.
 
-The outer `PaperMonitor-v0.1.0-offline.zip.sha256` file verifies the ZIP. On
-macOS, run `shasum -a 256 PaperMonitor-v0.1.0-offline.zip`; on Windows, run
-`Get-FileHash .\PaperMonitor-v0.1.0-offline.zip -Algorithm SHA256`. Compare
-the result with the checksum received through the separate trusted channel.
+The outer `.sha256` file (named the same as the ZIP) verifies the ZIP. On
+macOS, run `shasum -a 256 your-package.zip`; on Windows, run
+`Get-FileHash .\your-package.zip -Algorithm SHA256`, using your downloaded
+file's name. Compare the result with the checksum in the `.sha256` file.
 
 ## First-time setup
 

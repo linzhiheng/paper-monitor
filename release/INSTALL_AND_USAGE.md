@@ -14,29 +14,29 @@ feeds and to the LLM service you configure.
 - macOS on Apple Silicon, or Windows 11 x64.
 - Docker Desktop (or OrbStack on macOS), configured to run **Linux
   containers**. Docker Compose v2 comes with it.
-- Several GB of free disk space (the ZIP is about 1.1 GB, and Docker needs
-  more room for the loaded container image).
+- A few GB of free disk space: a platform package is about 0.6 GB and the
+  combined package about 1.1 GB, and Docker needs more room for the loaded
+  container image.
 - Internet access while the program runs, if you use a cloud LLM. If you
   use a local Ollama model, only RSS fetching needs the internet.
 
 ## 2. Verify and unpack the package
 
-You should have received two files through a trusted channel:
-`PaperMonitor-v0.1.0-offline.zip` and its checksum file
-`PaperMonitor-v0.1.0-offline.zip.sha256`.
+You should have received two files through a trusted channel: the ZIP and
+its `.sha256` checksum file. The checksum file is named the same as the ZIP.
 
 **Step 1 — Check the ZIP before using it.**
 
 macOS:
 
 ```bash
-shasum -a 256 PaperMonitor-v0.1.0-offline.zip
+shasum -a 256 your-package.zip
 ```
 
 Windows PowerShell:
 
 ```powershell
-Get-FileHash .\PaperMonitor-v0.1.0-offline.zip -Algorithm SHA256
+Get-FileHash .\your-package.zip -Algorithm SHA256
 ```
 
 Compare the result with the hash in the `.sha256` file. If they do not
@@ -47,20 +47,20 @@ match, stop and ask for a fresh copy.
 macOS: double-click the ZIP in Finder, or run:
 
 ```bash
-unzip PaperMonitor-v0.1.0-offline.zip
+unzip your-package.zip
 ```
 
 Windows: right-click the ZIP and choose **Extract All…**
 
-You now have a folder named `PaperMonitor-v0.1.0-offline`. Keep the folder
-intact and always run the commands from inside it, not from the ZIP itself.
+You now have a folder named after the package. Keep the folder intact and
+always run the commands from inside it, not from the ZIP itself.
 
 The folder contains:
 
-- `paper-monitor-macos-arm64.sh` / `paper-monitor-windows-amd64.cmd` /
-  `paper-monitor-windows-amd64.ps1` — the launchers you will use
-- `images/` — the container images for both platforms (your launcher loads
-  the right one automatically)
+- `paper-monitor-macos-arm64.sh`, or `paper-monitor-windows-amd64.cmd` with
+  `paper-monitor-windows-amd64.ps1` — the launcher for your platform
+- `images/` — the container image archive for your platform (the combined
+  package contains both)
 - `compose.yaml`, `.env.example` — Docker configuration
 - `config/`, `data/`, `output/` — your settings, history, and results
 - `reports/` — software bill of materials and vulnerability reports
@@ -180,8 +180,8 @@ docker compose logs rss-paper
 - **"This package requires Docker Linux containers"** — on Windows, switch
   Docker Desktop to Linux containers (it is usually the default).
 - **"This is the macOS ARM64 package; Docker reports architecture …"** —
-  you are running a launcher that does not match your computer. Use the
-  other launcher, or the right package for your platform.
+  you are running a launcher that does not match your computer. Download
+  the package for your platform and run its launcher.
 - **"Image 'paper-monitor:v0.1.0' is 'arm64', not 'amd64'"** (or the
   reverse) — an image built for another platform is already loaded on this
   Docker host. Remove it with `docker image rm paper-monitor:v0.1.0` and run
