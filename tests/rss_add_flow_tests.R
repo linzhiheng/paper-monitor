@@ -14,9 +14,29 @@ feed_detail_expression <- paper_expressions[[which(vapply(paper_expressions, fun
 add_feed_expression <- paper_expressions[[which(vapply(paper_expressions, function(x) {
   startsWith(paste(deparse(x), collapse = ""), "action_add_feed <-")
 }, logical(1)))]]
+library_page_size_expression <- paper_expressions[[which(vapply(paper_expressions, function(x) {
+  startsWith(paste(deparse(x), collapse = ""), "RSS_LIBRARY_PAGE_SIZE <-")
+}, logical(1)))]]
+library_labels_expression <- paper_expressions[[which(vapply(paper_expressions, function(x) {
+  startsWith(paste(deparse(x), collapse = ""), "rss_library_item_labels <-")
+}, logical(1)))]]
+add_library_feeds_expression <- paper_expressions[[which(vapply(paper_expressions, function(x) {
+  startsWith(paste(deparse(x), collapse = ""), "action_add_feeds_from_library <-")
+}, logical(1)))]]
+feed_labels_expression <- paper_expressions[[which(vapply(paper_expressions, function(x) {
+  startsWith(paste(deparse(x), collapse = ""), "feed_item_labels <-")
+}, logical(1)))]]
+manage_feeds_expression <- paper_expressions[[which(vapply(paper_expressions, function(x) {
+  startsWith(paste(deparse(x), collapse = ""), "action_manage_feeds <-")
+}, logical(1)))]]
 eval(preview_lines_expression, envir = globalenv())
 eval(feed_detail_expression, envir = globalenv())
 eval(add_feed_expression, envir = globalenv())
+eval(library_page_size_expression, envir = globalenv())
+eval(library_labels_expression, envir = globalenv())
+eval(add_library_feeds_expression, envir = globalenv())
+eval(feed_labels_expression, envir = globalenv())
+eval(manage_feeds_expression, envir = globalenv())
 
 sample_data <- tibble::tibble(
   title = "Example paper", abstract = "Example abstract", authors = NA_character_, journal = "Detected Journal",
@@ -88,5 +108,84 @@ action_feed_detail(tibble::tibble(
 expect_true(identical(page_calls[[2]]$title, "RSS Feed Test"), "Testing a feed should use its own standard result page.")
 expect_true(any(page_calls[[2]]$info == "Preview:"), "The test result page should include a preview section.")
 expect_true(any(grepl("Example paper", page_calls[[2]]$info, fixed = TRUE)), "The test result page should include parsed articles.")
+
+rss_library <- load_rss_library()
+expect_true(nrow(rss_library) == 50L, "The built-in RSS library should contain 50 journals.")
+publisher_counts <- table(rss_library$publisher)
+expect_true(
+  identical(as.integer(publisher_counts[c("AGU", "EGU", "Royal Society", "Springer")]), c(24L, 20L, 1L, 5L)),
+  "The RSS library should contain the approved publisher counts."
+)
+expect_true(nrow(search_rss_library(rss_library, "SPRINGER")) == 5L, "Library search should be case-insensitive and match publishers.")
+expect_true(nrow(search_rss_library(rss_library, "solid earth")) == 2L, "Library search should match journal names.")
+
+selected_library_feeds <- rss_library[c(1L, 25L), , drop = FALSE]
+add_result <- add_rss_library_feeds(empty_feeds_tibble(), selected_library_feeds)
+expect_true(add_result$added == 2L && add_result$skipped == 0L, "Selected library feeds should be added and enabled.")
+expect_true(nrow(add_result$feeds) == 2L && all(add_result$feeds$enabled), "Library additions should produce enabled runtime feeds.")
+duplicate_result <- add_rss_library_feeds(add_result$feeds, selected_library_feeds)
+expect_true(duplicate_result$added == 0L && duplicate_result$skipped == 2L, "Already-configured feeds should be skipped.")
+same_journal <- selected_library_feeds[1L, , drop = FALSE]
+same_journal$rss_url <- "https://example.org/a-different-url"
+expect_true(rss_library_is_configured(same_journal, add_result$feeds), "A matching journal name should prevent duplicate configuration.")
+
+library_fixture <- rss_library[1:3, , drop = FALSE]
+load_rss_library <- function(...) library_fixture
+saved_feeds <- NULL
+page_calls <- list()
+responses <- list(
+  list(kind = "select", value = 1L),
+  list(kind = "select", value = 2L),
+  list(kind = "command", value = "a")
+)
+action_add_feed <- function(...) stop("The manual add flow should not run during library selection.")
+action_add_feeds_from_library(empty_feeds_tibble())
+expect_true(nrow(saved_feeds) == 2L, "Multi-selecting library entries should save both feeds together.")
+expect_true(all(saved_feeds$journal == library_fixture$journal[1:2]), "The selected library journals should be saved.")
+expect_true(any(grepl("Add selected (2)", page_calls[[3]]$commands, fixed = TRUE)), "The library should expose the selected-feed count.")
+expect_true(any(grepl("Add RSS URL manually", page_calls[[1]]$commands, fixed = TRUE)), "The RSS library should retain a manual URL option.")
+
+managed_feeds <- empty_feeds_tibble()
+library_open_count <- 0L
+load_feeds_config <- function(...) managed_feeds
+read_feed_status <- function(...) tibble::tibble(
+  journal = character(), parser_type = character(), success = logical(),
+  item_count = integer(), message = character(), timestamp = character()
+)
+page_calls <- list()
+responses <- list(list(kind = "command", value = "d"))
+action_add_feeds_from_library <- function(feeds) {
+  library_open_count <<- library_open_count + 1L
+  managed_feeds <<- add_rss_library_feeds(feeds, library_fixture[1L, , drop = FALSE])$feeds
+  invisible(managed_feeds)
+}
+setup_result <- action_manage_feeds(exit_commands = c(c = "Cancel initial setup"), setup_mode = TRUE)
+expect_true(library_open_count == 1L, "Initial RSS setup should automatically open the library when no feed is enabled.")
+expect_true(identical(setup_result, "d"), "Initial RSS setup should continue after the user selects Continue setup.")
+expect_true("d" %in% names(page_calls[[1]]$commands), "Continue setup should be available once an enabled feed exists.")
+expect_true("m" %in% names(page_calls[[1]]$commands), "Manual RSS entry should remain available in setup mode.")
+expect_true(any(grepl("(never run)", page_calls[[1]]$items, fixed = TRUE)), "A feed without status history should show a clean never-run label.")
+
+managed_feeds <- empty_feeds_tibble()
+library_open_count <- 0L
+page_calls <- list()
+responses <- list(list(kind = "command", value = "c"))
+action_add_feeds_from_library <- function(feeds) {
+  library_open_count <<- library_open_count + 1L
+  invisible(feeds)
+}
+cancel_result <- action_manage_feeds(exit_commands = c(c = "Cancel initial setup"), setup_mode = TRUE)
+expect_true(library_open_count == 1L, "The empty setup should offer the library only once before showing the feed page.")
+expect_true(identical(cancel_result, "c"), "The RSS page should return its initial-setup cancellation command.")
+expect_true(!"d" %in% names(page_calls[[1]]$commands), "Continue setup should stay hidden until an enabled feed exists.")
+
+managed_feeds <- add_result$feeds[1L, , drop = FALSE]
+page_calls <- list()
+responses <- list(list(kind = "command", value = "b"))
+action_add_feeds_from_library <- function(...) stop("Normal feed management should not auto-open the library.")
+normal_result <- action_manage_feeds()
+expect_true(identical(normal_result, "b"), "Normal feed management should retain its Back action.")
+expect_true(!"d" %in% names(page_calls[[1]]$commands), "Continue setup should not appear outside initial setup.")
+expect_true(all(c("a", "m", "b") %in% names(page_calls[[1]]$commands)), "Feed management should expose library, manual, and Back actions.")
 
 cat("rss_add_flow_tests: PASS\n")

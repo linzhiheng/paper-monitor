@@ -59,9 +59,13 @@ run_initial_setup_step_test <- function(step_index) {
     expect_true(step_index == 1L && setup_mode, "LLM setup should receive setup mode.")
     state$finished <- TRUE
   }
-  action_manage_feeds <<- function(exit_commands = c(b = "Back")) {
-    expect_true(step_index == 2L && identical(exit_commands, expected_cancel), "RSS setup should receive the cancel command vector.")
+  action_manage_feeds <<- function(exit_commands = c(b = "Back"), setup_mode = FALSE) {
+    expect_true(
+      step_index == 2L && identical(exit_commands, expected_cancel) && isTRUE(setup_mode),
+      "RSS setup should receive setup mode and the cancel command vector."
+    )
     state$finished <- TRUE
+    "d"
   }
   action_research_profile <<- function(exit_commands = c(b = "Back")) {
     expect_true(step_index == 3L && identical(exit_commands, expected_cancel), "Profile setup should receive the cancel command vector.")
@@ -71,9 +75,31 @@ run_initial_setup_step_test <- function(step_index) {
     expect_true(step_index == 4L && identical(exit_commands, expected_cancel), "Output setup should receive the cancel command vector.")
     state$finished <- TRUE
   }
-  action_initial_setup()
+  expect_true(action_initial_setup(), sprintf("Initial setup step %d should complete.", step_index))
 }
 
 for (step_index in seq_len(4L)) run_initial_setup_step_test(step_index)
+
+cancel_status <- lapply(seq_len(4L), function(i) list(
+  id = c("llm", "feeds", "profile", "output")[[i]],
+  label = c("LLM provider", "RSS feeds", "Research profile", "Output folder")[[i]],
+  complete = i != 2L
+))
+initial_setup_status <- function() cancel_status
+initial_setup_complete <- function(status) all(vapply(status, `[[`, logical(1), "complete"))
+initial_setup_next_incomplete <- function(status) which(!vapply(status, `[[`, logical(1), "complete"))[[1]]
+initial_setup_labels <- function(status) character()
+prompt_cli_page <- function(...) stop("The completed-setup page should not be shown during cancellation.")
+action_llm_settings <- function(...) stop("Cancellation should not advance to LLM settings.")
+action_manage_feeds <- function(exit_commands = c(b = "Back"), setup_mode = FALSE) {
+  expect_true(
+    identical(exit_commands, c(c = "Cancel initial setup")) && isTRUE(setup_mode),
+    "RSS cancellation should retain setup mode and its cancel command."
+  )
+  "c"
+}
+action_research_profile <- function(...) stop("Cancellation should not advance to profile setup.")
+action_output_settings <- function(...) stop("Cancellation should not advance to output setup.")
+expect_false(action_initial_setup(), "Cancelling RSS setup should leave initial setup immediately.")
 
 cat("initial_setup_tests: PASS\n")

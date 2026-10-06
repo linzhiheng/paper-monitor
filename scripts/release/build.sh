@@ -27,7 +27,7 @@ tag_commit="$(git rev-parse "$tag^{commit}" 2>/dev/null || true)"
 
 release_paths=(
   .dockerignore .env.example .gitignore DESCRIPTION Dockerfile LICENSE
-  Paper_Monitor.R README.md R config/template.md docker-compose.yml renv.lock
+  Paper_Monitor.R README.md R resources config/template.md docker-compose.yml renv.lock
   release scripts/release
 )
 for path in "${release_paths[@]}"; do

@@ -22,7 +22,12 @@ If configuration files are not yet present, open the existing interactive setup:
 docker compose run --rm -it rss-paper Rscript Paper_Monitor.R
 ```
 
-In **Output settings**, set the output folder to `/app/output`. Configure RSS feeds in the same CLI, or edit `config/feeds.json` directly. The researcher profile is stored in `config/research_profile.json`.
+In **Output settings**, set the output folder to `/app/output`. During RSS
+setup, choose one or more journals from the built-in searchable library and
+press `a` to add them. Once at least one feed is enabled, press `d` to
+continue setup. Use `m` only when you need to add an RSS URL that is not in
+the library. The researcher profile is stored in
+`config/research_profile.json`.
 
 Optionally copy `.env.example` to `.env` to choose a container timezone. It contains no credentials.
 

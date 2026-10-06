@@ -1,0 +1,356 @@
+{
+  "version": 1,
+  "verified_on": "2026-10-06",
+  "feeds": [
+    {
+      "publisher": "AGU",
+      "journal": "AGU Advances",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/2576604x/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Community Science",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/26929430/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Earth's Future",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/23284277/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Earth and Space Science",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/23335084/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Geochemistry, Geophysics, Geosystems",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/15252027/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "GeoHealth",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/24711403/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Geophysical Research Letters",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/19448007/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Global Biogeochemical Cycles",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/19449224/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Journal of Advances in Modeling Earth Systems",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/19422466/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Paleoceanography and Paleoclimatology",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/25724525/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Perspectives of Earth and Space Scientists",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/26376989/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Radio Science",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/1944799X/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Reviews of Geophysics",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/19449208/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Space Weather",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/15427390/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Tectonics",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/19449194/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Water Resources Research",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/19447973/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Journal of Geophysical Research: Atmospheres",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/21698996/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Journal of Geophysical Research: Biogeosciences",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/21698961/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Journal of Geophysical Research: Earth Surface",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/21699011/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Journal of Geophysical Research: Machine Learning and Computation",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/29935210/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Journal of Geophysical Research: Oceans",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Journal of Geophysical Research: Planets",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/21699100/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Journal of Geophysical Research: Solid Earth",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/21699356/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "AGU",
+      "journal": "Journal of Geophysical Research: Space Physics",
+      "rss_url": "https://agupubs.onlinelibrary.wiley.com/feed/21699402/most-recent",
+      "parser": "AGU",
+      "parser_arg": null
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Annales Geophysicae",
+      "rss_url": "https://angeo.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Annales Geophysicae"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Atmospheric Chemistry and Physics",
+      "rss_url": "https://acp.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Atmospheric Chemistry and Physics"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Atmospheric Measurement Techniques",
+      "rss_url": "https://amt.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Atmospheric Measurement Techniques"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Biogeosciences",
+      "rss_url": "https://bg.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Biogeosciences"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Climate of the Past",
+      "rss_url": "https://cp.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Climate of the Past"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Earth Observation",
+      "rss_url": "https://eo.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Earth Observation"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Earth Surface Dynamics",
+      "rss_url": "https://esurf.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Earth Surface Dynamics"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Earth System Dynamics",
+      "rss_url": "https://esd.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Earth System Dynamics"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Geochronology",
+      "rss_url": "https://gchron.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Geochronology"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Geoscience Communication",
+      "rss_url": "https://gc.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Geoscience Communication"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Geoscientific Instrumentation, Methods and Data Systems",
+      "rss_url": "https://gi.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Geoscientific Instrumentation, Methods and Data Systems"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Geoscientific Model Development",
+      "rss_url": "https://gmd.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Geoscientific Model Development"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Hydrology and Earth System Sciences",
+      "rss_url": "https://hess.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Hydrology and Earth System Sciences"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Natural Hazards and Earth System Sciences",
+      "rss_url": "https://nhess.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Natural Hazards and Earth System Sciences"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Nonlinear Processes in Geophysics",
+      "rss_url": "https://npg.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Nonlinear Processes in Geophysics"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Ocean Science",
+      "rss_url": "https://os.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Ocean Science"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "SOIL",
+      "rss_url": "https://soil.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "SOIL"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Solid Earth",
+      "rss_url": "https://se.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Solid Earth"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "The Cryosphere",
+      "rss_url": "https://tc.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "The Cryosphere"
+    },
+    {
+      "publisher": "EGU",
+      "journal": "Weather and Climate Dynamics",
+      "rss_url": "https://wcd.copernicus.org/xml/rss2_0.xml",
+      "parser": "EGU",
+      "parser_arg": "Weather and Climate Dynamics"
+    },
+    {
+      "publisher": "Royal Society",
+      "journal": "Philosophical Transactions of the Royal Society A",
+      "rss_url": "https://royalsocietypublishing.org/rss/site_1000005/1000005.xml",
+      "parser": "RoyalSociety",
+      "parser_arg": "Philosophical Transactions of the Royal Society A"
+    },
+    {
+      "publisher": "Springer",
+      "journal": "Earth, Planets and Space",
+      "rss_url": "https://link.springer.com/search.rss?query=&content-type=Article&sortBy=newestFirst&search-within=Journal&facet-journal-id=40623",
+      "parser": "Springer",
+      "parser_arg": "Earth, Planets and Space"
+    },
+    {
+      "publisher": "Springer",
+      "journal": "Pure and Applied Geophysics",
+      "rss_url": "https://link.springer.com/search.rss?query=&content-type=Article&sortBy=newestFirst&search-within=Journal&facet-journal-id=24",
+      "parser": "Springer",
+      "parser_arg": "Pure and Applied Geophysics"
+    },
+    {
+      "publisher": "Springer",
+      "journal": "Surveys in Geophysics",
+      "rss_url": "https://link.springer.com/search.rss?query=&content-type=Article&sortBy=newestFirst&search-within=Journal&facet-journal-id=10712",
+      "parser": "Springer",
+      "parser_arg": "Surveys in Geophysics"
+    },
+    {
+      "publisher": "Springer",
+      "journal": "Journal of Geodesy",
+      "rss_url": "https://link.springer.com/search.rss?query=&content-type=Article&sortBy=newestFirst&search-within=Journal&facet-journal-id=190",
+      "parser": "Springer",
+      "parser_arg": "Journal of Geodesy"
+    },
+    {
+      "publisher": "Springer",
+      "journal": "Bulletin of Volcanology",
+      "rss_url": "https://link.springer.com/search.rss?query=&content-type=Article&sortBy=newestFirst&search-within=Journal&facet-journal-id=445",
+      "parser": "Springer",
+      "parser_arg": "Bulletin of Volcanology"
+    }
+  ]
+}

@@ -286,6 +286,7 @@ normalize_pubdate <- function(x) {
 
 FEEDS_CONFIG_PATH <- file.path(CONFIG_DIR, "feeds.json")
 FEED_STATUS_PATH  <- file.path(CONFIG_DIR, "feed_status.json")
+RSS_LIBRARY_PATH  <- file.path("resources", "rss_library.json")
 
 SPECIALIZED_PARSERS <- c("AGU", "Springer", "EGU", "RoyalSociety")
 
@@ -298,6 +299,81 @@ empty_feeds_tibble <- function() {
     parser     = character(),
     parser_arg = character(),
     enabled    = logical()
+  )
+}
+
+empty_rss_library_tibble <- function() {
+  tibble(
+    library_id = integer(),
+    publisher  = character(),
+    journal    = character(),
+    rss_url    = character(),
+    parser     = character(),
+    parser_arg = character()
+  )
+}
+
+load_rss_library <- function(path = RSS_LIBRARY_PATH) {
+  raw <- read_json_config(path, default = NULL)
+  records <- if (is.null(raw)) list() else raw$feeds %||% raw
+  if (length(records) == 0) return(empty_rss_library_tibble())
+
+  library <- tibble(
+    publisher  = map_chr(records, ~ .x$publisher %||% NA_character_),
+    journal    = map_chr(records, ~ .x$journal %||% NA_character_),
+    rss_url    = map_chr(records, ~ .x$rss_url %||% NA_character_),
+    parser     = map_chr(records, ~ .x$parser %||% NA_character_),
+    parser_arg = map_chr(records, ~ .x$parser_arg %||% NA_character_)
+  )
+
+  required <- c("publisher", "journal", "rss_url", "parser")
+  invalid <- Reduce(`|`, lapply(required, function(field) {
+    is.na(library[[field]]) | !nzchar(trimws(library[[field]]))
+  }))
+  if (any(invalid)) stop("RSS library contains an incomplete entry.")
+  if (anyDuplicated(tolower(trimws(library$rss_url)))) {
+    stop("RSS library contains duplicate URLs.")
+  }
+
+  dplyr::mutate(library, library_id = dplyr::row_number(), .before = 1)
+}
+
+search_rss_library <- function(library, query = "") {
+  query <- tolower(trimws(query %||% ""))
+  if (!nzchar(query) || nrow(library) == 0) return(library)
+  searchable <- tolower(paste(library$publisher, library$journal))
+  dplyr::filter(library, grepl(query, searchable, fixed = TRUE))
+}
+
+rss_library_is_configured <- function(library, feeds) {
+  if (nrow(library) == 0) return(logical())
+  if (nrow(feeds) == 0) return(rep(FALSE, nrow(library)))
+  urls <- tolower(trimws(feeds$rss_url))
+  journals <- tolower(trimws(feeds$journal))
+  tolower(trimws(library$rss_url)) %in% urls |
+    tolower(trimws(library$journal)) %in% journals
+}
+
+add_rss_library_feeds <- function(feeds, selected) {
+  if (nrow(selected) == 0) {
+    return(list(feeds = feeds, added = 0L, skipped = 0L))
+  }
+
+  selected <- dplyr::distinct(selected, rss_url, .keep_all = TRUE)
+  configured <- rss_library_is_configured(selected, feeds)
+  additions <- selected[!configured, , drop = FALSE] |>
+    dplyr::transmute(
+      journal = journal,
+      rss_url = rss_url,
+      parser = parser,
+      parser_arg = parser_arg,
+      enabled = TRUE
+    )
+
+  list(
+    feeds = dplyr::bind_rows(feeds, additions),
+    added = nrow(additions),
+    skipped = sum(configured)
   )
 }
 

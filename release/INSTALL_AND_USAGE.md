@@ -20,29 +20,7 @@ feeds and to the LLM service you configure.
 - Internet access while the program runs, if you use a cloud LLM. If you
   use a local Ollama model, only RSS fetching needs the internet.
 
-## 2. Verify and unpack the package
-
-You should have received two files through a trusted channel: the ZIP and
-its `.sha256` checksum file. The checksum file is named the same as the ZIP.
-
-**Step 1 — Check the ZIP before using it.**
-
-macOS:
-
-```bash
-shasum -a 256 your-package.zip
-```
-
-Windows PowerShell:
-
-```powershell
-Get-FileHash .\your-package.zip -Algorithm SHA256
-```
-
-Compare the result with the hash in the `.sha256` file. If they do not
-match, stop and ask for a fresh copy.
-
-**Step 2 — Unpack.**
+## 2. Extract the package
 
 macOS: double-click the ZIP in Finder, or run:
 
@@ -52,8 +30,8 @@ unzip your-package.zip
 
 Windows: right-click the ZIP and choose **Extract All…**
 
-You now have a folder named after the package. Keep the folder intact and
-always run the commands from inside it, not from the ZIP itself.
+Open the extracted package folder and keep its contents together. Always run
+the commands below from inside that folder, not from the ZIP itself.
 
 The folder contains:
 
@@ -62,19 +40,19 @@ The folder contains:
 - `images/` — the container image archive for your platform (the combined
   package contains both)
 - `compose.yaml`, `.env.example` — Docker configuration
+- `resources/` — the built-in journal RSS library
 - `config/`, `data/`, `output/` — your settings, history, and results
 - `reports/` — software bill of materials and vulnerability reports
 - `README.md`, `INSTALL_AND_USAGE.md` — the quick-start and this full guide
 - `SHA256SUMS`, `LICENSE`
 
-Optional extra check on macOS: run `shasum -a 256 -c SHA256SUMS` from
-inside the package folder to verify every packaged file against the
-manifest.
+## 3. Install and complete first-time setup
 
-## 3. First-time setup
-
-Open a terminal in the package folder and run the setup command. The first
-launch loads the container image and may take a minute.
+Start Docker Desktop or OrbStack, open a terminal in the extracted package
+folder, and run the setup command. The launcher automatically loads the
+included container image the first time, so you do not need a registry
+account or a separate `docker load` command. The first launch may take a
+minute.
 
 macOS:
 
@@ -98,8 +76,8 @@ The setup is a menu-driven assistant. It will ask you for:
 1. **LLM settings** — pick a provider (Anthropic, OpenAI, DeepSeek, Ollama,
    or a custom OpenAI-compatible service), choose a model, and enter your
    API key where required. The assistant tests the connection before saving.
-2. **RSS feeds** — the package starts with none, so add at least one
-   journal feed. The assistant can detect the right parser for you.
+2. **RSS feeds** — choose one or more journals from the built-in searchable
+   library. Nothing is enabled until you select it.
 3. **Researcher profile** — you can either let the LLM draft it through a
    short interview, or write it by hand.
 4. **Output settings** — set the output folder to exactly `/app/output`.
@@ -107,6 +85,29 @@ The setup is a menu-driven assistant. It will ask you for:
 
 When everything is configured, press `q` at the main menu to leave. Each
 step is saved to `config/` when you confirm it.
+
+### Choosing RSS feeds
+
+The RSS step opens the built-in library automatically when no feed is
+configured. It contains 50 verified feeds: 24 AGU journals, 20 EGU
+journals, *Philosophical Transactions of the Royal Society A*, and five
+selected Springer earth-science journals.
+
+- Type a journal number to select or deselect it. You can select several
+  journals before saving.
+- Press `s` to search by journal or publisher, and `n` or `p` to move
+  between result pages.
+- Press `a` to add all selected journals. Already configured journals are
+  marked `[added]` and will not be duplicated.
+- Once at least one feed is enabled, press `d` on the RSS Feeds page to
+  continue to the next setup step. You do not need to finish building your
+  full journal list first.
+- Press `m` to enter an RSS URL manually if the journal you want is not in
+  the library. The assistant will test it, suggest a parser and preview the
+  articles before saving.
+
+You can return to **Manage RSS feeds** later to add, test, disable, or delete
+feeds.
 
 Nothing needs to be prepared by hand: the package already contains the
 `config/`, `data/`, and `output/` folders, the launcher recreates them
@@ -188,8 +189,9 @@ Notes:
 ## 6. Changing settings later
 
 Run the setup command again at any time. It opens the same menu, where you
-can manage RSS feeds, edit the research profile, change LLM or output
-settings, and review or prune the recommendation history.
+can search the RSS library or manage existing feeds, edit the research
+profile, change LLM or output settings, and review or prune the
+recommendation history.
 
 **Time zone** — each day's digest file is named with the container's date.
 To change the zone, copy `.env.example` to `.env` and edit the `TZ` value
@@ -201,7 +203,14 @@ To change the zone, copy `.env.example` to `.env` and edit the `TZ` value
 docker compose logs rss-paper
 ```
 
-## 7. Troubleshooting
+## 7. Optional: verify the downloaded ZIP
+
+This check is optional. Compare the accompanying `.sha256` value with the
+result of `shasum -a 256 your-package.zip` on macOS or
+`Get-FileHash .\your-package.zip -Algorithm SHA256` in Windows PowerShell.
+If the values differ, request a fresh copy.
+
+## 8. Troubleshooting
 
 - **"Docker is installed but its daemon is not running"** — start Docker
   Desktop and run the command again.
@@ -230,9 +239,41 @@ docker compose logs rss-paper
   `orb-wormhole-temp-*` terminal; use your normal terminal and the packaged
   launcher.
 
-## 8. Removing Paper Monitor
+## 9. Removing Paper Monitor
 
-- Delete the package folder. Your digests in `output/` and history in
-  `data/` are inside it, so keep copies first if you want them.
-- Optional: remove the container image with
-  `docker image rm paper-monitor:v0.1.0`.
+Run the uninstall command from the extracted package folder.
+
+macOS:
+
+```bash
+./paper-monitor-macos-arm64.sh uninstall
+```
+
+Windows:
+
+```powershell
+.\paper-monitor-windows-amd64.cmd uninstall
+```
+
+The command stops and removes Paper Monitor's Docker Compose resources and
+deletes the loaded `paper-monitor:v0.1.0` image. The offline image archive
+and launcher remain in the package folder, so running `setup` later can
+install it again.
+
+At the data prompt:
+
+- Press Enter or answer `y` to keep `config/`, `data/`, and `output/`. This
+  is the default and preserves settings, API credentials, recommendation
+  history, and generated digests for a later reinstall.
+- Answer `n` to request a complete cleanup. The launcher then requires you
+  to type `DELETE` exactly before it permanently removes those three
+  folders. Any other answer cancels the data cleanup.
+
+Only the three folders next to the launcher are eligible for deletion.
+Folders you mapped to other host locations by editing `compose.yaml` are not
+removed automatically.
+
+The launcher does not delete the extracted package folder itself. If you no
+longer need its offline image archive or launchers, delete that folder after
+uninstalling. If you chose to keep your data, copy `config/`, `data/`, and
+`output/` somewhere safe before deleting the package folder.

@@ -157,25 +157,138 @@ feed_item_labels <- function(feeds, status) {
     )
   }
   vapply(seq_len(nrow(feeds)), function(i) {
+    last_message <- if ("message" %in% names(feeds)) feeds$message[[i]] else NA_character_
+    if (is.na(last_message) || !nzchar(last_message)) last_message <- "(never run)"
     sprintf(
       "[%s] %-45s parser=%-11s last=%s",
       if (isTRUE(feeds$enabled[i])) "x" else " ",
       feeds$journal[i],
       feeds$parser_type[i],
-      feeds$message[i] %||% "(never run)"
+      last_message
     )
   }, character(1))
 }
 
-action_manage_feeds <- function(exit_commands = c(b = "Back")) {
-  exit_key <- names(exit_commands)[[1]]
+RSS_LIBRARY_PAGE_SIZE <- 10L
+
+rss_library_item_labels <- function(library, selected_ids, feeds) {
+  configured <- rss_library_is_configured(library, feeds)
+  vapply(seq_len(nrow(library)), function(i) {
+    marker <- if (configured[i]) "[added]" else if (library$library_id[i] %in% selected_ids) "[x]" else "[ ]"
+    sprintf("%-7s %-14s %s", marker, library$publisher[i], library$journal[i])
+  }, character(1))
+}
+
+action_add_feeds_from_library <- function(feeds) {
+  library <- tryCatch(load_rss_library(), error = function(e) e)
+  if (inherits(library, "error")) {
+    cat("RSS library could not be loaded:", conditionMessage(library), "\n")
+    return(invisible(NULL))
+  }
+  if (nrow(library) == 0) {
+    cat("RSS library is empty. You can still add a feed manually.\n")
+    return(invisible(NULL))
+  }
+
+  query <- ""
+  page <- 1L
+  selected_ids <- integer()
+
+  repeat {
+    matches <- search_rss_library(library, query)
+    page_count <- max(1L, ceiling(nrow(matches) / RSS_LIBRARY_PAGE_SIZE))
+    page <- min(max(1L, page), page_count)
+    first <- (page - 1L) * RSS_LIBRARY_PAGE_SIZE + 1L
+    last <- min(nrow(matches), page * RSS_LIBRARY_PAGE_SIZE)
+    page_rows <- if (nrow(matches) == 0) matches else matches[first:last, , drop = FALSE]
+
+    commands <- c(
+      s = "Search",
+      if (length(selected_ids) > 0) c(a = sprintf("Add selected (%d)", length(selected_ids))) else character(),
+      if (page < page_count) c(n = "Next page") else character(),
+      if (page > 1L) c(p = "Previous page") else character(),
+      m = "Add RSS URL manually",
+      b = "Back"
+    )
+    info <- c(
+      sprintf("Search: %s", if (nzchar(query)) query else "(all journals)"),
+      sprintf("Selected: %d  Page: %d/%d  Matches: %d", length(selected_ids), page, page_count, nrow(matches)),
+      "Select a number to toggle it. [added] entries are already configured."
+    )
+    if (nrow(matches) == 0) info <- c(info, "No journals match this search.")
+
+    nav <- prompt_cli_page(
+      "RSS Library",
+      rss_library_item_labels(page_rows, selected_ids, feeds),
+      commands,
+      info
+    )
+
+    if (identical(nav$kind, "select")) {
+      selected <- page_rows[nav$value, , drop = FALSE]
+      if (rss_library_is_configured(selected, feeds)) {
+        cat("This journal is already in your feeds.\n")
+      } else if (selected$library_id %in% selected_ids) {
+        selected_ids <- setdiff(selected_ids, selected$library_id)
+      } else {
+        selected_ids <- c(selected_ids, selected$library_id)
+      }
+      next
+    }
+    if (identical(nav$value, "s")) {
+      query <- prompt_text("Search journals or publishers")
+      page <- 1L
+    } else if (identical(nav$value, "n")) {
+      page <- page + 1L
+    } else if (identical(nav$value, "p")) {
+      page <- page - 1L
+    } else if (identical(nav$value, "a")) {
+      selected <- dplyr::filter(library, library_id %in% selected_ids)
+      result <- add_rss_library_feeds(feeds, selected)
+      if (result$added > 0) save_feeds_config(result$feeds)
+      cat(sprintf("Added %d RSS feed%s.\n", result$added, if (result$added == 1L) "" else "s"))
+      if (result$skipped > 0) cat(sprintf("Skipped %d already-configured feed%s.\n", result$skipped, if (result$skipped == 1L) "" else "s"))
+      return(invisible(result$feeds))
+    } else if (identical(nav$value, "m")) {
+      action_add_feed(feeds)
+      return(invisible(load_feeds_config()))
+    } else {
+      return(invisible(feeds))
+    }
+  }
+}
+
+action_manage_feeds <- function(exit_commands = c(b = "Back"), setup_mode = FALSE) {
+  library_offered <- FALSE
   repeat {
     feeds  <- load_feeds_config()
     status <- read_feed_status()
-    info <- if (nrow(feeds) == 0) "No feeds configured." else character()
-    nav <- prompt_cli_page("RSS Feeds", feed_item_labels(feeds, status), c(a = "Add", exit_commands), info)
-    if (identical(nav$value, exit_key)) return(invisible(NULL))
-    if (identical(nav$value, "a")) { action_add_feed(feeds); next }
+    has_enabled_feed <- nrow(feeds) > 0 && any(feeds$enabled)
+
+    if (isTRUE(setup_mode) && !library_offered && !has_enabled_feed) {
+      library_offered <- TRUE
+      action_add_feeds_from_library(feeds)
+      next
+    }
+
+    info <- if (nrow(feeds) == 0) {
+      "Choose journals from the RSS library or add an RSS URL manually."
+    } else if (isTRUE(setup_mode) && has_enabled_feed) {
+      "At least one feed is enabled. Choose Continue setup when ready."
+    } else {
+      character()
+    }
+    commands <- c(
+      a = "Add from library",
+      m = "Add RSS URL manually",
+      if (isTRUE(setup_mode) && has_enabled_feed) c(d = "Continue setup") else character(),
+      exit_commands
+    )
+    nav <- prompt_cli_page("RSS Feeds", feed_item_labels(feeds, status), commands, info)
+    if (identical(nav$value, "d")) return(invisible("d"))
+    if (identical(nav$value, "a")) { action_add_feeds_from_library(feeds); next }
+    if (identical(nav$value, "m")) { action_add_feed(feeds); next }
+    if (nav$value %in% names(exit_commands)) return(invisible(nav$value))
     action_feed_detail(feeds, nav$value)
   }
 }
@@ -925,10 +1038,15 @@ action_initial_setup <- function() {
     }
 
     before_complete <- status[[step_index]]$complete
+    step_result <- NULL
     if (step_index == 1L) action_llm_settings(setup_mode = TRUE)
-    else if (step_index == 2L) action_manage_feeds(exit_commands = c(c = "Cancel initial setup"))
+    else if (step_index == 2L) step_result <- action_manage_feeds(
+      exit_commands = c(c = "Cancel initial setup"), setup_mode = TRUE
+    )
     else if (step_index == 3L) action_research_profile(exit_commands = c(c = "Cancel initial setup"))
     else if (step_index == 4L) action_output_settings(exit_commands = c(c = "Cancel initial setup"))
+
+    if (step_index == 2L && identical(step_result, "c")) return(invisible(FALSE))
 
     after_status <- initial_setup_status()
     if (!isTRUE(after_status[[step_index]]$complete) && identical(before_complete, after_status[[step_index]]$complete)) {

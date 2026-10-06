@@ -31,6 +31,7 @@ RUN R -q -e "install.packages('https://cloud.r-project.org/src/contrib/renv_1.2.
 
 COPY Paper_Monitor.R ./
 COPY R ./R
+COPY resources ./resources
 COPY config/template.md ./config/template.md
 
 RUN mkdir -p /app/config /app/data /app/output

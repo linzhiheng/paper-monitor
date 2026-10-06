@@ -2,26 +2,26 @@
 
 __PACKAGE_DESCRIPTION__
 
-This package runs one paper-monitoring cycle at a time. It does not contain
-your API key, RSS feeds, research profile, recommendation history, or output.
+Paper Monitor fetches papers from RSS feeds, scores them with your chosen
+LLM, and writes a Markdown digest. This package runs one monitoring cycle at
+a time and installs from the included Docker image without a registry
+download.
 
-For step-by-step installation and usage instructions, see
-`INSTALL_AND_USAGE.md` in this package.
+For more detail and troubleshooting, see `INSTALL_AND_USAGE.md`.
 
-## Before you start
+## Requirements
 
-- macOS: Apple Silicon, Docker Desktop or OrbStack, configured for Linux
-  containers.
-- Windows: Windows 11 x64, Docker Desktop, configured for Linux containers.
-- Internet access is needed when the application fetches RSS feeds or calls a
-  cloud LLM. Loading the supplied image itself is offline.
+- macOS on Apple Silicon with Docker Desktop or OrbStack, or Windows 11 x64
+  with Docker Desktop
+- Docker configured to use Linux containers
+- Internet access while fetching RSS feeds or using a cloud LLM
 
-The outer `.sha256` file (named the same as the ZIP) verifies the ZIP. On
-macOS, run `shasum -a 256 your-package.zip`; on Windows, run
-`Get-FileHash .\your-package.zip -Algorithm SHA256`, using your downloaded
-file's name. Compare the result with the checksum in the `.sha256` file.
+## Install and configure
 
-## First-time setup
+1. Extract the ZIP in Finder or Windows Explorer.
+2. Open a terminal in the extracted package folder.
+3. Make sure Docker Desktop or OrbStack is running.
+4. Start the setup command for your platform.
 
 macOS:
 
@@ -36,39 +36,80 @@ Windows:
 .\paper-monitor-windows-amd64.cmd setup
 ```
 
-The `.cmd` wrapper runs the PowerShell launcher with a temporary
-execution-policy bypass, so no system setting has to be changed. Calling
-`paper-monitor-windows-amd64.ps1` directly from PowerShell also works.
+The first setup command automatically loads the included Docker image; no
+registry login or separate image installation is needed. On Windows, the
+`.cmd` launcher also avoids changing the system PowerShell execution policy.
 
-Follow the CLI steps to configure an LLM, RSS feeds, research profile, and
-output. In Output settings, set the folder to `/app/output`.
+Follow the CLI prompts to configure:
 
-Your API key remains in `config/llm_config.json` on this computer. Do not
-share that file. To use local Ollama from this container, use the advanced
-endpoint setting `http://host.docker.internal:11434/api/generate`, not
-`localhost`.
+1. An LLM provider and model
+2. At least one RSS feed from the built-in library
+3. Your research profile
+4. The output folder, which should be `/app/output`
 
-## Run one cycle
+The RSS step opens a searchable library of 50 verified journal feeds from
+AGU, EGU, the Royal Society, and Springer. Select journal numbers to toggle
+one or more choices, then press `a` to add them. After the first feed is
+enabled, press `d` to continue setup. Press `s` to search, `n`/`p` to move
+between pages, or `m` to enter an RSS URL manually when a journal is not in
+the library.
+
+Your API key is stored in plain text at `config/llm_config.json` on this
+computer. Keep that file private. For local Ollama, use
+`http://host.docker.internal:11434/api/generate` as the advanced endpoint,
+not `localhost`.
+
+## Run Paper Monitor
+
+Run one monitoring cycle whenever you want:
+
+macOS:
 
 ```bash
 ./paper-monitor-macos-arm64.sh run
 ```
 
+Windows:
+
 ```powershell
 .\paper-monitor-windows-amd64.cmd run
 ```
 
-Generated Markdown appears in `output/`; history is in
-`data/recommendations.csv`. To change the timezone, copy `.env.example` to
-`.env` and edit `TZ` before running. Logs are available with
-`docker compose logs rss-paper`.
+The command exits when the cycle finishes. Generated Markdown appears in
+`output/`, and recommendation history is saved in
+`data/recommendations.csv`. Run the setup command again whenever you want to
+change settings.
 
-Settings, history, and digests live in `config/`, `data/`, and `output/`
-next to this README (mounted into the container at `/app/config`,
-`/app/data`, `/app/output`). To keep them somewhere else, edit the
-left-hand side of the `volumes:` entries in `compose.yaml` (the container
-paths must stay unchanged), or move only the digests via the output folder
-setting. See `INSTALL_AND_USAGE.md` for details.
+Settings, history, and output stay in `config/`, `data/`, and `output/` next
+to this README. Back up those three folders before replacing or deleting the
+package.
 
-Do not run the program in an OrbStack `orb-wormhole-temp-*` terminal. Use the
-platform script or `docker compose` from this package directory.
+## Uninstall
+
+The uninstall command stops Paper Monitor and removes its loaded Docker
+image. It keeps `config/`, `data/`, and `output/` by default.
+
+macOS:
+
+```bash
+./paper-monitor-macos-arm64.sh uninstall
+```
+
+Windows:
+
+```powershell
+.\paper-monitor-windows-amd64.cmd uninstall
+```
+
+Press Enter at the data prompt to keep your settings, history, and output.
+For a complete data cleanup, answer `n` and then type `DELETE` when asked.
+The downloaded package folder is not deleted automatically.
+
+## Optional integrity check
+
+If you want to verify the download before extracting it, compare the ZIP's
+SHA-256 value with the accompanying `.sha256` file. Commands are listed in
+`INSTALL_AND_USAGE.md`.
+
+Do not run the program in an OrbStack `orb-wormhole-temp-*` terminal. Use
+your normal terminal from the extracted package folder.
