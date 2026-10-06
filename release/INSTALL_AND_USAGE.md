@@ -40,7 +40,6 @@ The folder contains:
 - `images/` — the container image archive for your platform (the combined
   package contains both)
 - `compose.yaml`, `.env.example` — Docker configuration
-- `resources/` — the built-in journal RSS library
 - `config/`, `data/`, `output/` — your settings, history, and results
 - `reports/` — software bill of materials and vulnerability reports
 - `README.md`, `INSTALL_AND_USAGE.md` — the quick-start and this full guide
