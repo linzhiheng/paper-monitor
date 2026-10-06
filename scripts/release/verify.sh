@@ -48,7 +48,11 @@ verify_image() {
 
   docker run --rm --platform "linux/$arch" --entrypoint Rscript "$platform_tag" -e "packages <- strsplit('$required_packages', ',', fixed = TRUE)[[1]]; missing <- packages[!vapply(packages, requireNamespace, logical(1), quietly = TRUE)]; if (length(missing)) stop(paste(missing, collapse = ', ')); cat('required R packages: PASS\\n')"
 
-  docker run --rm --platform "linux/$arch" -v "$root_dir/tests:/app/tests:ro" --entrypoint sh "$platform_tag" -c 'sh tests/run_all.sh'
+  docker run --rm --platform "linux/$arch" \
+    -v "$root_dir/tests:/app/tests:ro" \
+    -v "$package_dir:/package:ro" \
+    -e PAPER_MONITOR_LAUNCHER_ROOT=/package \
+    --entrypoint sh "$platform_tag" -c 'sh tests/run_all.sh'
 
   local output status
   set +e

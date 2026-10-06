@@ -6,14 +6,18 @@ read_text <- function(path) {
   paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 }
 
+launcher_root <- Sys.getenv("PAPER_MONITOR_LAUNCHER_ROOT", unset = "release")
+launcher_path <- function(name) file.path(launcher_root, name)
+
 description <- readLines("DESCRIPTION", warn = FALSE, encoding = "UTF-8")
 version_line <- description[startsWith(description, "Version:")]
 version <- trimws(sub("^Version:", "", version_line))
 expect_true(identical(version, "0.1.3"), "DESCRIPTION should declare version 0.1.3.")
 
-mac_launcher <- read_text("release/paper-monitor-macos-arm64.sh")
-windows_cmd <- read_text("release/paper-monitor-windows-amd64.cmd")
-windows_ps1 <- read_text("release/paper-monitor-windows-amd64.ps1")
+mac_launcher_path <- launcher_path("paper-monitor-macos-arm64.sh")
+mac_launcher <- read_text(mac_launcher_path)
+windows_cmd <- read_text(launcher_path("paper-monitor-windows-amd64.cmd"))
+windows_ps1 <- read_text(launcher_path("paper-monitor-windows-amd64.ps1"))
 
 expect_true(
   grepl("{menu|run|uninstall}", mac_launcher, fixed = TRUE),
@@ -53,7 +57,7 @@ for (launcher in c(mac_launcher, windows_ps1)) {
 
 setup_result <- suppressWarnings(system2(
   "bash",
-  c("release/paper-monitor-macos-arm64.sh", "setup"),
+  c(mac_launcher_path, "setup"),
   stdout = TRUE,
   stderr = TRUE
 ))
