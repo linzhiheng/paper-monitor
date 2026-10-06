@@ -1,91 +1,147 @@
 # Paper Monitor
 
-Daily academic-paper monitoring pipeline. It fetches configured RSS feeds, filters and scores papers with the configured LLM, then writes a Markdown digest.
+Paper Monitor helps you keep up with new research papers. It checks journal
+feeds, asks an AI model which papers match your interests, and creates a daily
+Markdown reading list.
 
-## Docker
+You do not need to install R or work with Docker commands. Download the package
+for your computer and use the included launcher script to set up, run, or
+remove Paper Monitor.
 
-The Docker service is a batch job: each run performs one recommendation cycle and exits. Scheduling stays outside the image.
+## What you need
 
-### Build
+- A Mac with Apple Silicon, or a Windows 11 x64 computer
+- Docker Desktop, or OrbStack on a Mac
+- An API key for an online AI service such as OpenAI, Anthropic, or DeepSeek;
+  or a local Ollama model, which does not need an API key
+- Internet access for checking journal feeds
+
+A ChatGPT, Claude, or other website/app subscription cannot be used in place
+of an API key. API access is a separate service and may be billed separately
+by the provider.
+
+## Download and unpack
+
+Download the package for your computer from the
+[latest release](https://github.com/linzhiheng/paper-monitor/releases/latest):
+
+- Mac: `PaperMonitor-...-macos-arm64.zip`
+- Windows: `PaperMonitor-...-windows-amd64.zip`
+
+Extract the ZIP, then keep all files in the extracted folder together. Start
+Docker Desktop or OrbStack before using Paper Monitor.
+
+## Set up Paper Monitor
+
+Open Terminal on a Mac or PowerShell on Windows in the extracted folder. Then
+run the setup command for your computer.
+
+Mac:
+
+```bash
+chmod +x paper-monitor-macos-arm64.sh
+./paper-monitor-macos-arm64.sh setup
+```
+
+Windows:
+
+```powershell
+.\paper-monitor-windows-amd64.cmd setup
+```
+
+The launcher installs the included Paper Monitor image automatically. The
+guided setup asks you to choose an AI service and enter its API key, add
+journals, describe your research interests, and confirm where results should
+be saved. Local Ollama is the only built-in option that does not need an API
+key. Use `/app/output` as the output folder.
+
+## Journal feeds are included
+
+You do not need to find RSS addresses yourself. Paper Monitor includes a
+searchable library of 50 journal feeds from:
+
+- AGU
+- EGU
+- *Philosophical Transactions of the Royal Society A*
+- Selected Springer Earth-science journals
+
+Choose one or more journals during setup. You can search the library or add
+another RSS address manually if the journal you want is not included.
+
+## Run Paper Monitor
+
+Each run checks for new papers and creates one reading list. Run the launcher
+again whenever you want a new list.
+
+Mac:
+
+```bash
+./paper-monitor-macos-arm64.sh run
+```
+
+Windows:
+
+```powershell
+.\paper-monitor-windows-amd64.cmd run
+```
+
+Your reading lists appear in the `output` folder. Each paper includes its
+relevance score, matched topics, citation details, a short summary, and an
+explanation of why it may interest you.
+
+## Example output
+
+The generated Markdown files work in Obsidian and ordinary Markdown readers.
+
+![Example Paper Monitor output shown in Obsidian](release/assets/output-example.png)
+
+## Change your settings
+
+Run the same `setup` command again. You can add or remove journals, change the
+AI service, update your research interests, or change output settings.
+
+Your settings, reading history, and generated files are stored in the
+`config`, `data`, and `output` folders inside the extracted package.
+
+## Uninstall
+
+Use the included launcher instead of entering Docker commands yourself.
+
+Mac:
+
+```bash
+./paper-monitor-macos-arm64.sh uninstall
+```
+
+Windows:
+
+```powershell
+.\paper-monitor-windows-amd64.cmd uninstall
+```
+
+The launcher removes the installed Paper Monitor image. By default, it keeps
+your settings, history, and reading lists so that you can use them again. It
+only deletes those files after you explicitly request a full cleanup and type
+`DELETE` when asked.
+
+For more help, see the
+[full installation and usage guide](release/INSTALL_AND_USAGE.md).
+
+## For developers
+
+The main program is `Paper_Monitor.R`. To build the container from source and
+run one cycle:
 
 ```bash
 docker compose build
+docker compose up --no-build rss-paper
 ```
 
-### First-time configuration
-
-The container mounts `config/`, `data/`, and `output/` from the project directory. API keys remain in `config/llm_config.json`; they are not passed through environment variables or copied into the image.
-
-If configuration files are not yet present, open the existing interactive setup:
+To open the setup menu from a source checkout:
 
 ```bash
 docker compose run --rm -it rss-paper Rscript Paper_Monitor.R
 ```
 
-In **Output settings**, set the output folder to `/app/output`. During RSS
-setup, choose one or more journals from the built-in searchable library and
-press `a` to add them. Once at least one feed is enabled, press `d` to
-continue setup. Use `m` only when you need to add an RSS URL that is not in
-the library. The researcher profile is stored in
-`config/research_profile.json`.
-
-Optionally copy `.env.example` to `.env` to choose a container timezone. It contains no credentials.
-
-### Run once
-
-```bash
-docker compose up --no-build rss-paper
-```
-
-The generated Markdown is written to `./output/`; recommendation history is retained at `./data/recommendations.csv`; feed health status is retained at `./config/feed_status.json`.
-
-### Schedule with host cron
-
-For example, run every day at 07:00 (replace `/path/to/project`):
-
-```cron
-0 7 * * * cd /path/to/project && docker compose up --no-build rss-paper
-```
-
-Do not use `restart: always`: failed runs should be visible and handled by your host scheduling/monitoring policy rather than retried invisibly.
-
-### Logs and lifecycle
-
-```bash
-docker compose logs rss-paper
-docker compose down
-```
-
-`docker compose up -d` is valid but starts only one batch run; the service exits when that run completes. It is not a long-running scheduler.
-
-### Update after code changes
-
-```bash
-docker compose build
-docker compose up --no-build rss-paper
-```
-
-## Private offline release
-
-The maintained release target is a single offline ZIP for macOS Apple Silicon
-and Windows 11 x64 Docker Desktop. Build it only from the exact local Git tag
-matching `DESCRIPTION`'s version:
-
-```bash
-scripts/release/build.sh
-```
-
-The build creates `dist/PaperMonitor-v<version>-offline.zip` and a separate
-`.sha256` file. It builds both Linux architectures, runs the R test suite and
-configuration smoke tests, checks the Docker Desktop Ollama host route,
-generates SPDX SBOMs, and blocks the release on unapproved HIGH or CRITICAL
-vulnerabilities.
-
-The packaged user documentation is `release/README.md` (quick start, copied
-in as the package's `README.md`) and `release/INSTALL_AND_USAGE.md` (full
-installation and usage guide). The package also includes the platform
-launchers, with a Windows `.cmd` wrapper so recipients do not have to change
-the PowerShell execution policy. Version strings inside both release
-documents are literal; update them together with `DESCRIPTION` when
-preparing a new version. Do not include user configuration or API-key files
-when sharing the package.
+Release packages are built with `scripts/release/build.sh` from a matching Git
+version tag.

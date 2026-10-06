@@ -1,29 +1,36 @@
-# Paper Monitor v0.1.1 offline package
+# Paper Monitor v0.1.1
 
 __PACKAGE_DESCRIPTION__
 
-Paper Monitor fetches papers from RSS feeds, scores them with your chosen
-LLM, and writes a Markdown digest. This package runs one monitoring cycle at
-a time and installs from the included Docker image without a registry
-download.
+Paper Monitor helps you keep up with new research papers. It checks journal
+feeds, asks an AI model which papers match your interests, and creates a daily
+Markdown reading list.
 
-For more detail and troubleshooting, see `INSTALL_AND_USAGE.md`.
+Use the launcher included in this folder to set up, run, or uninstall Paper
+Monitor. You do not need to install R, enter Docker commands, or download a
+container image separately.
 
-## Requirements
+## Before you start
 
-- macOS on Apple Silicon with Docker Desktop or OrbStack, or Windows 11 x64
-  with Docker Desktop
-- Docker configured to use Linux containers
-- Internet access while fetching RSS feeds or using a cloud LLM
+You need:
 
-## Install and configure
+- Docker Desktop, or OrbStack on a Mac
+- An API key for an online AI service such as OpenAI, Anthropic, or DeepSeek;
+  or a local Ollama model, which does not need an API key
+- Internet access for checking journal feeds
 
-1. Extract the ZIP in Finder or Windows Explorer.
-2. Open a terminal in the extracted package folder.
-3. Make sure Docker Desktop or OrbStack is running.
-4. Start the setup command for your platform.
+A ChatGPT, Claude, or other website/app subscription cannot be used in place
+of an API key. API access is a separate service and may be billed separately
+by the provider.
 
-macOS:
+## Set up Paper Monitor
+
+1. Extract the ZIP.
+2. Start Docker Desktop or OrbStack.
+3. Open Terminal or PowerShell in this folder.
+4. Run the setup command for your computer.
+
+Mac:
 
 ```bash
 chmod +x paper-monitor-macos-arm64.sh
@@ -36,34 +43,34 @@ Windows:
 .\paper-monitor-windows-amd64.cmd setup
 ```
 
-The first setup command automatically loads the included Docker image; no
-registry login or separate image installation is needed. On Windows, the
-`.cmd` launcher also avoids changing the system PowerShell execution policy.
+The launcher installs the included Paper Monitor image automatically. The
+guided setup asks you to:
 
-Follow the CLI prompts to configure:
+1. Choose an AI service and enter its API key. Local Ollama does not need a
+   key.
+2. Choose journals from the built-in RSS library.
+3. Describe your research interests.
+4. Confirm the output folder. Use `/app/output`.
 
-1. An LLM provider and model
-2. At least one RSS feed from the built-in library
-3. Your research profile
-4. The output folder, which should be `/app/output`
+Your API key is saved in `config/llm_config.json` on this computer. Keep this
+file private.
 
-The RSS step opens a searchable library of 50 verified journal feeds from
-AGU, EGU, the Royal Society, and Springer. Select journal numbers to toggle
-one or more choices, then press `a` to add them. After the first feed is
-enabled, press `d` to continue setup. Press `s` to search, `n`/`p` to move
-between pages, or `m` to enter an RSS URL manually when a journal is not in
-the library.
+## Journal feeds are included
 
-Your API key is stored in plain text at `config/llm_config.json` on this
-computer. Keep that file private. For local Ollama, use
-`http://host.docker.internal:11434/api/generate` as the advanced endpoint,
-not `localhost`.
+You do not need to find RSS addresses yourself. Paper Monitor includes a
+searchable library of 50 journal feeds from AGU, EGU, *Philosophical
+Transactions of the Royal Society A*, and selected Springer Earth-science
+journals.
+
+Choose one or more journals, then press `a` to add them. After at least one
+feed has been added, press `d` to continue. You can also press `s` to search
+the library or `m` to add an RSS address manually.
 
 ## Run Paper Monitor
 
-Run one monitoring cycle whenever you want:
+Run one monitoring cycle whenever you want a new reading list.
 
-macOS:
+Mac:
 
 ```bash
 ./paper-monitor-macos-arm64.sh run
@@ -75,21 +82,33 @@ Windows:
 .\paper-monitor-windows-amd64.cmd run
 ```
 
-The command exits when the cycle finishes. Generated Markdown appears in
-`output/`, and recommendation history is saved in
-`data/recommendations.csv`. Run the setup command again whenever you want to
-change settings.
+The launcher checks for new papers and closes when the reading list is ready.
+The result is saved in the `output` folder.
 
-Settings, history, and output stay in `config/`, `data/`, and `output/` next
-to this README. Back up those three folders before replacing or deleting the
-package.
+## Example output
+
+Each paper includes its relevance score, matched topics, citation details, a
+short summary, and an explanation of why it may interest you. The Markdown
+files work in Obsidian and ordinary Markdown readers.
+
+![Example Paper Monitor output shown in Obsidian](assets/output-example.png)
+
+## Change your settings
+
+Run the `setup` command again. You can add or remove journals, change the AI
+service, update your research interests, or change output settings.
+
+Your files stay in these folders:
+
+- `config` — settings, including your API key
+- `data` — reading history
+- `output` — generated reading lists
+
+Back up these three folders before replacing or deleting the package.
 
 ## Uninstall
 
-The uninstall command stops Paper Monitor and removes its loaded Docker
-image. It keeps `config/`, `data/`, and `output/` by default.
-
-macOS:
+Mac:
 
 ```bash
 ./paper-monitor-macos-arm64.sh uninstall
@@ -101,15 +120,10 @@ Windows:
 .\paper-monitor-windows-amd64.cmd uninstall
 ```
 
-Press Enter at the data prompt to keep your settings, history, and output.
-For a complete data cleanup, answer `n` and then type `DELETE` when asked.
-The downloaded package folder is not deleted automatically.
+The launcher removes the installed Paper Monitor image. Press Enter when asked
+if you want to keep your settings, history, and reading lists. A full cleanup
+only happens if you request it and then type `DELETE`.
 
-## Optional integrity check
+The extracted package folder is not deleted automatically.
 
-If you want to verify the download before extracting it, compare the ZIP's
-SHA-256 value with the accompanying `.sha256` file. Commands are listed in
-`INSTALL_AND_USAGE.md`.
-
-Do not run the program in an OrbStack `orb-wormhole-temp-*` terminal. Use
-your normal terminal from the extracted package folder.
+For more help and troubleshooting, see `INSTALL_AND_USAGE.md`.

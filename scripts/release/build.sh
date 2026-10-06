@@ -78,7 +78,8 @@ build_platform amd64
 assemble_package() {
   local pkg_dir="$1"
   local platform="$2"
-  mkdir -p "$pkg_dir/images" "$pkg_dir/config" "$pkg_dir/data" "$pkg_dir/output" "$pkg_dir/reports"
+  mkdir -p "$pkg_dir/assets" "$pkg_dir/images" "$pkg_dir/config" "$pkg_dir/data" "$pkg_dir/output" "$pkg_dir/reports"
+  cp release/assets/output-example.png "$pkg_dir/assets/output-example.png"
   cp config/template.md "$pkg_dir/config/template.md"
   touch "$pkg_dir/data/.gitkeep" "$pkg_dir/output/.gitkeep"
   cp LICENSE .env.example "$pkg_dir/"
