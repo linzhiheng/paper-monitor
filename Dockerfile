@@ -26,7 +26,7 @@ WORKDIR /app
 
 COPY DESCRIPTION renv.lock ./
 
-RUN R -q -e "install.packages('https://cloud.r-project.org/src/contrib/renv_1.2.4.tar.gz', repos = NULL, type = 'source')" \
+RUN R -q -e "install.packages('https://cran.r-project.org/src/contrib/Archive/renv/renv_1.2.4.tar.gz', repos = NULL, type = 'source')" \
     && R -q -e "renv::restore(prompt = FALSE)"
 
 COPY Paper_Monitor.R ./
