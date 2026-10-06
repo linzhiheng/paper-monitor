@@ -1,0 +1,18 @@
+source("R/llm_layer.R")
+source("R/cli_ui_layer.R")
+
+expect_true <- function(value, message) if (!isTRUE(value)) stop(message, call. = FALSE)
+
+commands <- c(n = "Next", p = "Previous", b = "Back")
+lines <- cli_page_lines("Example", c("One", "Two"), commands, "Page 1/2")
+expect_true(startsWith(lines[1], "\n─ Example "), "Page title should use the shared fine-line format.")
+expect_true(identical(nchar(sub("^\\n", "", lines[1]), type = "width"), CLI_RULE_WIDTH), "Title line should fill the shared width.")
+expect_true(any(grepl("1\\. One", lines)), "Items should be numbered.")
+expect_true(any(grepl("\\[1-2\\] Select Number \\[n\\] Next \\[p\\] Previous \\[b\\] Back", lines)), "Footer should include selection and commands.")
+expect_true(any(lines == cli_rule()), "Footer separator should use the shared fine line.")
+expect_true(identical(cli_parse_navigation("2", 2, commands), list(kind = "select", value = 2L)), "A valid number should select an item.")
+expect_true(identical(cli_parse_navigation("n", 2, commands), list(kind = "command", value = "n")), "A valid command should parse.")
+expect_true(identical(cli_parse_navigation("3", 2, commands)$kind, "invalid"), "Out-of-range numbers should fail.")
+expect_true(identical(cli_parse_navigation("q", 2, commands)$kind, "invalid"), "Unavailable commands should fail.")
+expect_true(!any(grepl("\\[1-0\\]", cli_page_lines("Empty", character(), c(b = "Back")))), "Empty pages should not offer numeric selection.")
+cat("cli_ui_tests: PASS\n")
