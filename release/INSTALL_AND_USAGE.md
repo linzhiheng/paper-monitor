@@ -1,4 +1,4 @@
-# Paper Monitor v0.1.1 — Installation and Usage
+# Paper Monitor v0.1.2 — Installation and Usage
 
 Paper Monitor finds new journal articles and creates a reading list based on
 your research interests. Each paper has a short summary, a relevance score,
