@@ -131,6 +131,49 @@ and asks your AI service to score the new papers. It then saves a file named
 `Daily_Papers_<date>.md` in the `output` folder. The launcher closes when the
 reading list is ready.
 
+### Run automatically
+
+First finish the initial setup and run the `run` command manually once. This
+confirms that Docker and your AI service are ready before you add a schedule.
+Always schedule `run`; `menu` waits for keyboard input.
+
+#### Mac: Shortcuts
+
+1. Open **Shortcuts** and create a new shortcut.
+2. Add the **Run Shell Script** action.
+3. Enter the command below, replacing the example with the full path to the
+   launcher in your extracted Paper Monitor folder:
+
+   ```bash
+   "/full/path/to/paper-monitor-macos-arm64.sh" run
+   ```
+
+4. Click **Edit > Automation**, add a **Time of Day** trigger, and choose when
+   it should run.
+5. To run without confirmation, open the shortcut's information, choose
+   **Privacy**, and enable **Allow Running When Locked** if that option is
+   available.
+
+#### Windows: Task Scheduler
+
+1. Open **Task Scheduler** and choose **Create Basic Task**.
+2. Choose a schedule, such as **Daily**, and set the time.
+3. Choose **Start a program**.
+4. Enter these values, replacing the example paths with the location of your
+   extracted Paper Monitor folder:
+
+   - Program/script: `C:\Windows\System32\cmd.exe`
+   - Add arguments: `/d /c ""C:\full\path\paper-monitor-windows-amd64.cmd" run"`
+   - Start in: `C:\full\path`
+
+5. Save the task. In Task Scheduler, right-click it and choose **Run** once to
+   test it.
+
+For either method, the computer must be awake and Docker Desktop or OrbStack
+must already be running. If you use a local Ollama model, Ollama must also be
+running. Keeping the scheduled task in your signed-in user session is the most
+reliable choice for Docker Desktop.
+
 ## 6. Example output
 
 The result is a Markdown file that works in Obsidian and ordinary Markdown

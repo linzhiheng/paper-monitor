@@ -90,6 +90,27 @@ Your reading lists appear in the `output` folder. Each paper includes its
 relevance score, matched topics, citation details, a short summary, and an
 explanation of why it may interest you.
 
+## Run automatically
+
+Complete the initial setup and test the `run` command once before scheduling
+it. Always schedule `run`; `menu` waits for keyboard input. On a Mac, create a
+shortcut with the **Run Shell Script** action, enter the following command with
+the full path to your launcher, then add a **Time of Day** automation:
+
+```bash
+"/full/path/to/paper-monitor-macos-arm64.sh" run
+```
+
+On Windows, open **Task Scheduler** and create a basic task with your preferred
+schedule. Choose **Start a program**, then use:
+
+- Program/script: `C:\Windows\System32\cmd.exe`
+- Add arguments: `/d /c ""C:\full\path\paper-monitor-windows-amd64.cmd" run"`
+- Start in: the extracted Paper Monitor folder
+
+The computer must be awake, and Docker Desktop or OrbStack must already be
+running. If you use a local Ollama model, Ollama must also be running.
+
 ## Example output
 
 The generated Markdown files work in Obsidian and ordinary Markdown readers.
