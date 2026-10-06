@@ -1,4 +1,4 @@
-# Paper Monitor v0.1.2
+# Paper Monitor v0.1.3
 
 __PACKAGE_DESCRIPTION__
 
@@ -6,9 +6,9 @@ Paper Monitor helps you keep up with new research papers. It checks journal
 feeds, asks an AI model which papers match your interests, and creates a daily
 Markdown reading list.
 
-Use the launcher included in this folder to set up, run, or uninstall Paper
-Monitor. You do not need to install R, enter Docker commands, or download a
-container image separately.
+Use the launcher included in this folder to open the interactive menu, run a
+monitoring cycle, or uninstall Paper Monitor. You do not need to install R,
+enter Docker commands, or download a container image separately.
 
 ## Before you start
 
@@ -23,28 +23,28 @@ A ChatGPT, Claude, or other website/app subscription cannot be used in place
 of an API key. API access is a separate service and may be billed separately
 by the provider.
 
-## Set up Paper Monitor
+## Open Paper Monitor
 
 1. Extract the ZIP.
 2. Start Docker Desktop or OrbStack.
 3. Open Terminal or PowerShell in this folder.
-4. Run the setup command for your computer.
+4. Run the menu command for your computer.
 
 Mac:
 
 ```bash
 chmod +x paper-monitor-macos-arm64.sh
-./paper-monitor-macos-arm64.sh setup
+./paper-monitor-macos-arm64.sh menu
 ```
 
 Windows:
 
 ```powershell
-.\paper-monitor-windows-amd64.cmd setup
+.\paper-monitor-windows-amd64.cmd menu
 ```
 
-The launcher installs the included Paper Monitor image automatically. The
-guided setup asks you to:
+The launcher installs the included Paper Monitor image automatically and opens
+the interactive menu. On the first launch, the guided setup asks you to:
 
 1. Choose an AI service and enter its API key. Local Ollama does not need a
    key.
@@ -95,7 +95,7 @@ files work in Obsidian and ordinary Markdown readers.
 
 ## Change your settings
 
-Run the `setup` command again. You can add or remove journals, change the AI
+Run the `menu` command again. You can add or remove journals, change the AI
 service, update your research interests, or change output settings.
 
 Your files stay in these folders:

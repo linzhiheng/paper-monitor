@@ -1,11 +1,12 @@
-# Paper Monitor v0.1.2 — Installation and Usage
+# Paper Monitor v0.1.3 — Installation and Usage
 
 Paper Monitor finds new journal articles and creates a reading list based on
 your research interests. Each paper has a short summary, a relevance score,
 and a reason why it may be useful to you.
 
 The package already contains the Paper Monitor software. Use the launcher
-script in this folder to install it, change settings, run it, or uninstall it.
+script in this folder to open its menu, change settings, run a monitoring
+cycle, or uninstall it.
 
 ## 1. Before you start
 
@@ -47,37 +48,37 @@ The main items in the folder are:
 
 The other files support the launcher and should not be moved or renamed.
 
-## 3. Set up Paper Monitor
+## 3. Open Paper Monitor
 
 Start Docker Desktop or OrbStack first. Then open Terminal on a Mac or
 PowerShell on Windows in the extracted folder.
 
-Run the setup command for your computer.
+Run the menu command for your computer.
 
 Mac:
 
 ```bash
 chmod +x paper-monitor-macos-arm64.sh
-./paper-monitor-macos-arm64.sh setup
+./paper-monitor-macos-arm64.sh menu
 ```
 
 Windows:
 
 ```powershell
-.\paper-monitor-windows-amd64.cmd setup
+.\paper-monitor-windows-amd64.cmd menu
 ```
 
 Use the Windows `.cmd` launcher shown above. You do not need to change the
 PowerShell execution policy.
 
-The first setup may take a minute because the launcher installs the included
-Paper Monitor image. It does this automatically; you do not need a Docker
-account or a separate installation command.
+Opening the menu for the first time may take a minute because the launcher
+installs the included Paper Monitor image. It does this automatically; you do
+not need a Docker account or a separate installation command.
 
-The setup guide asks for four things:
+On the first launch, the setup guide asks for four things:
 
-1. **AI service** — choose a provider and model, then enter its API key. The
-   setup tests the connection before saving it. Local Ollama does not need a
+1. **AI service** — choose a provider and model, then enter its API key. Paper
+   Monitor tests the connection before saving it. Local Ollama does not need a
    key.
 2. **Journals** — choose one or more journals from the included RSS library.
 3. **Research interests** — answer a short AI-guided interview or enter the
@@ -107,7 +108,7 @@ In the journal list:
 - After at least one feed has been added, press `d` to continue setup.
 - Press `m` if you want to enter an RSS address that is not in the library.
 
-You can return to the journal list later by running `setup` again.
+You can return to the journal list later by running `menu` again.
 
 ## 5. Run Paper Monitor
 
@@ -140,18 +141,18 @@ matched topics, short summary, and reason for the recommendation.
 
 ## 7. Change settings later
 
-Run the setup command again at any time:
+Run the menu command again at any time:
 
 Mac:
 
 ```bash
-./paper-monitor-macos-arm64.sh setup
+./paper-monitor-macos-arm64.sh menu
 ```
 
 Windows:
 
 ```powershell
-.\paper-monitor-windows-amd64.cmd setup
+.\paper-monitor-windows-amd64.cmd menu
 ```
 
 You can add or remove journals, change the AI service, update your research
@@ -223,7 +224,7 @@ again.
 
 Check that you entered an API key, not a ChatGPT or Claude subscription login.
 Confirm that the key is active and that its API account has available credit.
-Then run `setup` again.
+Then run `menu` again.
 
 ### Ollama cannot be reached
 

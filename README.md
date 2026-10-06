@@ -5,8 +5,8 @@ feeds, asks an AI model which papers match your interests, and creates a daily
 Markdown reading list.
 
 You do not need to install R or work with Docker commands. Download the package
-for your computer and use the included launcher script to set up, run, or
-remove Paper Monitor.
+for your computer and use the included launcher script to open its menu, run a
+monitoring cycle, or uninstall Paper Monitor.
 
 ## What you need
 
@@ -31,29 +31,30 @@ Download the package for your computer from the
 Extract the ZIP, then keep all files in the extracted folder together. Start
 Docker Desktop or OrbStack before using Paper Monitor.
 
-## Set up Paper Monitor
+## Open Paper Monitor
 
 Open Terminal on a Mac or PowerShell on Windows in the extracted folder. Then
-run the setup command for your computer.
+run the menu command for your computer.
 
 Mac:
 
 ```bash
 chmod +x paper-monitor-macos-arm64.sh
-./paper-monitor-macos-arm64.sh setup
+./paper-monitor-macos-arm64.sh menu
 ```
 
 Windows:
 
 ```powershell
-.\paper-monitor-windows-amd64.cmd setup
+.\paper-monitor-windows-amd64.cmd menu
 ```
 
-The launcher installs the included Paper Monitor image automatically. The
-guided setup asks you to choose an AI service and enter its API key, add
-journals, describe your research interests, and confirm where results should
-be saved. Local Ollama is the only built-in option that does not need an API
-key. Use `/app/output` as the output folder.
+The launcher installs the included Paper Monitor image automatically and opens
+the interactive menu. On the first launch, the guided setup asks you to choose
+an AI service and enter its API key, add journals, describe your research
+interests, and confirm where results should be saved. Local Ollama is the only
+built-in option that does not need an API key. Use `/app/output` as the output
+folder.
 
 ## Journal feeds are included
 
@@ -65,8 +66,8 @@ searchable library of 50 journal feeds from:
 - *Philosophical Transactions of the Royal Society A*
 - Selected Springer Earth-science journals
 
-Choose one or more journals during setup. You can search the library or add
-another RSS address manually if the journal you want is not included.
+Choose one or more journals during initial setup. You can search the library or
+add another RSS address manually if the journal you want is not included.
 
 ## Run Paper Monitor
 
@@ -97,8 +98,8 @@ The generated Markdown files work in Obsidian and ordinary Markdown readers.
 
 ## Change your settings
 
-Run the same `setup` command again. You can add or remove journals, change the
-AI service, update your research interests, or change output settings.
+Run the `menu` command again. You can add or remove journals, change the AI
+service, update your research interests, or change output settings.
 
 Your settings, reading history, and generated files are stored in the
 `config`, `data`, and `output` folders inside the extracted package.
@@ -137,7 +138,7 @@ docker compose build
 docker compose up --no-build rss-paper
 ```
 
-To open the setup menu from a source checkout:
+To open the interactive menu from a source checkout:
 
 ```bash
 docker compose run --rm -it rss-paper Rscript Paper_Monitor.R

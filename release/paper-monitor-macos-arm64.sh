@@ -2,17 +2,17 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ./paper-monitor-macos-arm64.sh {setup|run|uninstall}" >&2
+  echo "Usage: ./paper-monitor-macos-arm64.sh {menu|run|uninstall}" >&2
   exit 64
 }
 
 mode="${1:-}"
-[[ "$mode" == "setup" || "$mode" == "run" || "$mode" == "uninstall" ]] || usage
+[[ "$mode" == "menu" || "$mode" == "run" || "$mode" == "uninstall" ]] || usage
 
 root_dir="$(cd "$(dirname "$0")" && pwd)"
 cd "$root_dir"
 
-image_tag="paper-monitor:v0.1.2"
+image_tag="paper-monitor:v0.1.3"
 
 command -v docker >/dev/null 2>&1 || { echo "Docker Desktop or OrbStack is required." >&2; exit 1; }
 docker info >/dev/null 2>&1 || { echo "Docker is installed but its daemon is not running." >&2; exit 1; }
@@ -57,7 +57,7 @@ server_arch="$(docker version --format '{{.Server.Arch}}')"
 [[ "$server_arch" == "arm64" || "$server_arch" == "aarch64" ]] || { echo "This is the macOS ARM64 package; Docker reports architecture '$server_arch'." >&2; exit 1; }
 
 if ! docker image inspect "$image_tag" >/dev/null 2>&1; then
-  docker load -i "images/paper-monitor-v0.1.2-linux-arm64.tar.gz"
+  docker load -i "images/paper-monitor-v0.1.3-linux-arm64.tar.gz"
 fi
 
 image_arch="$(docker image inspect --format '{{.Architecture}}' "$image_tag")"
@@ -65,7 +65,7 @@ image_arch="$(docker image inspect --format '{{.Architecture}}' "$image_tag")"
 
 mkdir -p config data output
 
-if [[ "$mode" == "setup" ]]; then
+if [[ "$mode" == "menu" ]]; then
   exec docker compose -f compose.yaml run --rm -it rss-paper Rscript Paper_Monitor.R
 fi
 
