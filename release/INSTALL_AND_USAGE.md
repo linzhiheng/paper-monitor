@@ -1,4 +1,4 @@
-# Paper Monitor v0.1.0 — Installation and Usage Guide
+# Paper Monitor v0.1.1 — Installation and Usage Guide
 
 Paper Monitor watches RSS feeds from geophysics journals, scores each new
 paper for relevance to your research profile using an LLM, and writes a
@@ -219,9 +219,9 @@ If the values differ, request a fresh copy.
 - **"This is the macOS ARM64 package; Docker reports architecture …"** —
   you are running a launcher that does not match your computer. Download
   the package for your platform and run its launcher.
-- **"Image 'paper-monitor:v0.1.0' is 'arm64', not 'amd64'"** (or the
+- **"Image 'paper-monitor:v0.1.1' is 'arm64', not 'amd64'"** (or the
   reverse) — an image built for another platform is already loaded on this
-  Docker host. Remove it with `docker image rm paper-monitor:v0.1.0` and run
+  Docker host. Remove it with `docker image rm paper-monitor:v0.1.1` and run
   the launcher again.
 - **PowerShell refuses to run the `.ps1` directly** — use the `.cmd`
   wrapper, which bypasses this automatically. If you prefer calling the
@@ -256,7 +256,7 @@ Windows:
 ```
 
 The command stops and removes Paper Monitor's Docker Compose resources and
-deletes the loaded `paper-monitor:v0.1.0` image. The offline image archive
+deletes the loaded `paper-monitor:v0.1.1` image. The offline image archive
 and launcher remain in the package folder, so running `setup` later can
 install it again.
 

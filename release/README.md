@@ -1,4 +1,4 @@
-# Paper Monitor v0.1.0 offline package
+# Paper Monitor v0.1.1 offline package
 
 __PACKAGE_DESCRIPTION__
 
