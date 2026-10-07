@@ -1,8 +1,14 @@
 # Paper Monitor v0.1.3 — Installation and Usage
 
-Paper Monitor finds new journal articles and creates a reading list based on
-your research interests. Each paper has a short summary, a relevance score,
-and a reason why it may be useful to you.
+Paper Monitor is a repeatable workflow for keeping up with new research. Each
+run fetches the latest entries available from your selected journal RSS feeds,
+skips papers it has already analyzed whether or not they were recommended, and
+uses an AI model to evaluate the remaining papers against your research
+profile. It then writes a Markdown report containing the papers that meet your
+recommendation threshold.
+
+Run it whenever you want an update, or schedule it to run every day for an
+automatic daily report of newly discovered papers relevant to your research.
 
 The package already contains the Paper Monitor software. Use the launcher
 script in this folder to open its menu, change settings, run a monitoring
@@ -112,7 +118,7 @@ You can return to the journal list later by running `menu` again.
 
 ## 5. Run Paper Monitor
 
-Run one monitoring cycle whenever you want a new reading list.
+Run one monitoring cycle whenever you want a new report.
 
 Mac:
 
@@ -126,10 +132,13 @@ Windows:
 .\paper-monitor-windows-amd64.cmd run
 ```
 
-Paper Monitor checks the selected journals, skips papers it has seen before,
-and asks your AI service to score the new papers. It then saves a file named
-`Daily_Papers_<date>.md` in the `output` folder. The launcher closes when the
-reading list is ready.
+Paper Monitor checks the latest entries from the selected RSS feeds against its
+analysis history. It sends only papers that have not already been analyzed to
+your AI service, up to the configured maximum, and scores them against your
+research profile. Papers that meet your recommendation threshold are included
+in a file named `Daily_Papers_<date>.md` in the `output` folder. If no new paper
+qualifies, the report says so instead of repeating a previous recommendation.
+The launcher closes when the report is ready.
 
 ### Run automatically
 
@@ -173,6 +182,9 @@ For either method, the computer must be awake and Docker Desktop or OrbStack
 must already be running. If you use a local Ollama model, Ollama must also be
 running. Keeping the scheduled task in your signed-in user session is the most
 reliable choice for Docker Desktop.
+
+With a daily schedule, Paper Monitor repeats the full workflow each day and
+produces a new report of newly discovered papers relevant to your research.
 
 ## 6. Example output
 

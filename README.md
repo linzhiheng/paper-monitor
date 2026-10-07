@@ -1,8 +1,14 @@
 # Paper Monitor
 
-Paper Monitor helps you keep up with new research papers. It checks journal
-feeds, asks an AI model which papers match your interests, and creates a daily
-Markdown reading list.
+Paper Monitor is a repeatable workflow for keeping up with new research. Each
+run fetches the latest entries available from your selected journal RSS feeds,
+skips papers it has already analyzed whether or not they were recommended, and
+uses an AI model to evaluate the remaining papers against your research
+profile. It then writes a Markdown report containing the papers that meet your
+recommendation threshold.
+
+Run it whenever you want an update, or schedule it to run every day for an
+automatic daily report of newly discovered papers relevant to your research.
 
 You do not need to install R or work with Docker commands. Download the package
 for your computer and use the included launcher script to open its menu, run a
@@ -71,8 +77,10 @@ add another RSS address manually if the journal you want is not included.
 
 ## Run Paper Monitor
 
-Each run checks for new papers and creates one reading list. Run the launcher
-again whenever you want a new list.
+Each run checks the latest RSS entries against your analysis history. It sends
+only papers that have not already been analyzed to your AI service, up to the
+configured maximum, and scores them against your research profile. Papers that
+meet your recommendation threshold are included in a new report.
 
 Mac:
 
@@ -109,7 +117,10 @@ schedule. Choose **Start a program**, then use:
 - Start in: the extracted Paper Monitor folder
 
 The computer must be awake, and Docker Desktop or OrbStack must already be
-running. If you use a local Ollama model, Ollama must also be running.
+running. If you use a local Ollama model, Ollama must also be running. With a
+daily schedule, Paper Monitor repeats the workflow each day and produces a new
+report; when nothing new qualifies, the report says so instead of repeating
+previous recommendations.
 
 ## Example output
 
