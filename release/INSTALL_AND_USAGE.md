@@ -49,7 +49,7 @@ The main items in the folder are:
   launcher for your computer
 - `config` — your settings
 - `data` — your reading history
-- `output` — your generated reading lists
+- `output` — your generated Markdown reports
 - `README.md` and `INSTALL_AND_USAGE.md` — help documents
 
 The other files support the launcher and should not be moved or renamed.
@@ -89,7 +89,7 @@ On the first launch, the setup guide asks for four things:
 2. **Journals** — choose one or more journals from the included RSS library.
 3. **Research interests** — answer a short AI-guided interview or enter the
    information yourself.
-4. **Output folder** — use `/app/output`. Your reading lists will then appear
+4. **Output folder** — use `/app/output`. Your reports will then appear
    in the `output` folder next to the launcher.
 
 Your API key is saved as plain text in `config/llm_config.json` on this
@@ -229,7 +229,7 @@ Your information is stored in three folders next to the launcher:
 
 - `config` — settings and your API key
 - `data` — previously processed papers
-- `output` — generated reading lists
+- `output` — generated Markdown reports
 
 Copy these folders to make a backup. To move Paper Monitor to another
 computer, extract a fresh package there and copy these folders into it.
@@ -255,7 +255,7 @@ The launcher stops Paper Monitor and removes its installed image. It keeps
 
 When asked whether to keep your information:
 
-- Press Enter or answer `y` to keep your settings, history, and reading lists.
+- Press Enter or answer `y` to keep your settings, history, and reports.
 - Answer `n` to request a full cleanup. You must then type `DELETE` exactly
   before the three folders are permanently removed.
 

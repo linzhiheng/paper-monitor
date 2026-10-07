@@ -1,32 +1,68 @@
 # Paper Monitor
 
-Paper Monitor is a repeatable pipline for keeping up with new research. Each
-run fetches the latest entries available from your selected journal RSS feeds,
-skips papers it has already analyzed whether or not they were recommended, and
-uses an AI model to evaluate the remaining papers against your research
-profile. It then writes a Markdown report containing the papers that meet your
-recommendation threshold.
+**Turn journal RSS feeds into a focused, profile-based Markdown report.**
 
-Run it whenever you want an update, or schedule it to run every day for an
-automatic daily report of newly discovered papers relevant to your research.
+Keeping up with new papers should not require opening dozens of journal pages
+or reading every abstract in an RSS feed. Paper Monitor runs a repeatable local
+workflow that finds new articles, evaluates them against your research profile,
+and writes a report containing the papers most relevant to you.
 
-You do not need to install R or work with Docker commands. Download the package
-for your computer and use the included launcher script to open its menu, run a
-monitoring cycle, or uninstall Paper Monitor.
+Run it whenever you want an update, or schedule it to create a fresh report
+every day. Ready-to-use packages are available for Mac and Windows; you do not
+need to install R or enter Docker commands yourself.
 
-## What you need
+## How it works
+
+```text
+Journal RSS feeds -> analysis history -> profile-based AI scoring
+                  -> recommendation threshold -> Markdown report
+```
+
+Each run:
+
+1. Fetches the latest entries available from your selected journal RSS feeds.
+2. Skips papers already recorded in the local analysis history, whether or not
+   they were previously recommended.
+3. Sends the remaining papers to your chosen AI model, up to the configured
+   maximum, and evaluates them against your research profile.
+4. Saves every successful analysis so the same paper is not analyzed again.
+5. Writes papers that meet your recommendation threshold to a dated Markdown
+   report. If nothing new qualifies, the report says so.
+
+## Highlights
+
+- **Research-profile filtering** — evaluate papers against a detailed profile,
+  not just a single keyword list.
+- **Guided profile creation** — describe your work through an AI-guided
+  interview, or enter the profile manually.
+- **Built-in journal library** — search 50 feeds from AGU, EGU, the Royal
+  Society, and selected Springer Earth-science journals, or add your own RSS
+  address.
+- **No repeated analysis** — successful results are kept in local history and
+  deduplicated by DOI on later runs.
+- **Useful reports** — each recommendation includes a relevance score, matched
+  topics, citation details, a short summary, and an explanation.
+- **Flexible AI providers** — use Anthropic, OpenAI, DeepSeek, another
+  OpenAI-compatible service, or a local Ollama model.
+- **Local files** — settings, analysis history, and Markdown reports remain in
+  the extracted package folder.
+- **Daily automation** — use Shortcuts on macOS or Task Scheduler on Windows to
+  run the same pipeline automatically.
+
+## Quick start
+
+### What you need
 
 - A Mac with Apple Silicon, or a Windows 11 x64 computer
 - Docker Desktop, or OrbStack on a Mac
-- An API key for an online AI service such as OpenAI, Anthropic, or DeepSeek;
-  or a local Ollama model, which does not need an API key
-- Internet access for checking journal feeds
+- A few gigabytes of free disk space
+- Internet access for journal feeds and online AI services
+- An API key for an online AI provider, or a running local Ollama model
 
-A ChatGPT, Claude, or other website/app subscription cannot be used in place
-of an API key. API access is a separate service and may be billed separately
-by the provider.
+A ChatGPT, Claude, or other website/app subscription is not an API key. API
+access is a separate service and may be billed separately by its provider.
 
-## Download and unpack
+### 1. Download and extract
 
 Download the package for your computer from the
 [latest release](https://github.com/linzhiheng/paper-monitor/releases/latest):
@@ -34,13 +70,13 @@ Download the package for your computer from the
 - Mac: `PaperMonitor-...-macos-arm64.zip`
 - Windows: `PaperMonitor-...-windows-amd64.zip`
 
-Extract the ZIP, then keep all files in the extracted folder together. Start
-Docker Desktop or OrbStack before using Paper Monitor.
+Extract the ZIP and keep its contents together. Do not run the launcher from
+inside the ZIP.
 
-## Open Paper Monitor
+### 2. Open the menu and complete setup
 
-Open Terminal on a Mac or PowerShell on Windows in the extracted folder. Then
-run the menu command for your computer.
+Start Docker Desktop or OrbStack. Then open Terminal on a Mac or PowerShell on
+Windows in the extracted folder.
 
 Mac:
 
@@ -55,32 +91,15 @@ Windows:
 .\paper-monitor-windows-amd64.cmd menu
 ```
 
-The launcher installs the included Paper Monitor image automatically and opens
-the interactive menu. On the first launch, the guided setup asks you to choose
-an AI service and enter its API key, add journals, describe your research
-interests, and confirm where results should be saved. Local Ollama is the only
-built-in option that does not need an API key. Use `/app/output` as the output
-folder.
+The launcher installs the included Paper Monitor image automatically, then
+opens the interactive menu. Initial setup guides you through:
 
-## Journal feeds are included
+1. Choosing an AI provider and testing its connection.
+2. Selecting one or more journal feeds.
+3. Creating your research profile through an interview or manual entry.
+4. Confirming the output folder. Use `/app/output` for the release package.
 
-You do not need to find RSS addresses yourself. Paper Monitor includes a
-searchable library of 50 journal feeds from:
-
-- AGU
-- EGU
-- *Philosophical Transactions of the Royal Society A*
-- Selected Springer Earth-science journals
-
-Choose one or more journals during initial setup. You can search the library or
-add another RSS address manually if the journal you want is not included.
-
-## Run Paper Monitor
-
-Each run checks the latest RSS entries against your analysis history. It sends
-only papers that have not already been analyzed to your AI service, up to the
-configured maximum, and scores them against your research profile. Papers that
-meet your recommendation threshold are included in a new report.
+### 3. Run the pipeline
 
 Mac:
 
@@ -94,51 +113,107 @@ Windows:
 .\paper-monitor-windows-amd64.cmd run
 ```
 
-Your reading lists appear in the `output` folder. Each paper includes its
-relevance score, matched topics, citation details, a short summary, and an
-explanation of why it may interest you.
+The launcher closes when the report is ready. Open the `output` folder to find
+the generated `Daily_Papers_<date>.md` file.
+
+### Launcher commands
+
+| Command | Purpose |
+| --- | --- |
+| `menu` | Open the interactive menu to complete setup or change settings |
+| `run` | Run one non-interactive monitoring cycle and exit |
+| `uninstall` | Remove the installed Paper Monitor image, with an option to keep local data |
 
 ## Run automatically
 
-Complete the initial setup and test the `run` command once before scheduling
-it. Always schedule `run`; `menu` waits for keyboard input. On a Mac, create a
-shortcut with the **Run Shell Script** action, enter the following command with
-the full path to your launcher, then add a **Time of Day** automation:
+Complete initial setup and test `run` manually before adding a schedule. Always
+schedule `run`; `menu` waits for keyboard input.
+
+### Mac: Shortcuts
+
+Create a shortcut with the **Run Shell Script** action, enter the full path to
+your launcher, and add a **Time of Day** automation:
 
 ```bash
 "/full/path/to/paper-monitor-macos-arm64.sh" run
 ```
 
-On Windows, open **Task Scheduler** and create a basic task with your preferred
-schedule. Choose **Start a program**, then use:
+Enable **Allow Running When Locked** in the shortcut's privacy settings if that
+option is available.
+
+### Windows: Task Scheduler
+
+Create a basic task with your preferred schedule. Choose **Start a program**
+and use:
 
 - Program/script: `C:\Windows\System32\cmd.exe`
 - Add arguments: `/d /c ""C:\full\path\paper-monitor-windows-amd64.cmd" run"`
 - Start in: the extracted Paper Monitor folder
 
-The computer must be awake, and Docker Desktop or OrbStack must already be
-running. If you use a local Ollama model, Ollama must also be running. With a
-daily schedule, Paper Monitor repeats the workflow each day and produces a new
-report; when nothing new qualifies, the report says so instead of repeating
-previous recommendations.
+For either system, the computer must be awake and Docker Desktop or OrbStack
+must already be running. If you use Ollama, it must also be running. A daily
+schedule produces a new report each day without repeating previous analyses.
 
-## Example output
+## Configure Paper Monitor
 
-The generated Markdown files work in Obsidian and ordinary Markdown readers.
+Run the `menu` command whenever you want to change the workflow.
+
+### Journal feeds
+
+The built-in searchable library contains:
+
+- 24 AGU journals
+- 20 EGU journals
+- *Philosophical Transactions of the Royal Society A*
+- Five selected Springer Earth-science journals
+
+You can enable or remove feeds, search the library, test a feed before saving
+it, or add another RSS address manually.
+
+### Research profile
+
+The research profile describes your core, secondary, and emerging interests,
+preferred methods and domains, regions, topic aliases, familiar authors and
+venues, and positive or negative signals. Paper Monitor can draft it through a
+guided interview in English, Chinese, or Japanese, or you can edit its fields
+manually.
+
+### AI and output settings
+
+The menu lets you change the provider and model, test the connection, set the
+maximum number of new papers analyzed per run, change the recommendation
+threshold, and choose the report location and filename prefix.
+
+Online API keys are stored as plain text in `config/llm_config.json` inside the
+local package. Keep that file private. Ollama is the built-in option that does
+not require an API key.
+
+## Reports and local data
+
+Reports are ordinary Markdown files that work in Obsidian and other Markdown
+readers.
 
 ![Example Paper Monitor output shown in Obsidian](release/assets/output-example.png)
 
-## Change your settings
+Each recommendation can include:
 
-Run the `menu` command again. You can add or remove journals, change the AI
-service, update your research interests, or change output settings.
+- Title, journal, authors, publication date, DOI, and link
+- Relevance score and category
+- Topics matched from your research profile
+- A short summary of the paper
+- An explanation of why it may be relevant
 
-Your settings, reading history, and generated files are stored in the
-`config`, `data`, and `output` folders inside the extracted package.
+Your persistent files stay next to the launcher:
+
+| Folder | Contents |
+| --- | --- |
+| `config` | RSS feeds, research profile, AI settings, output settings, and report template |
+| `data` | Analysis history used to prevent repeated processing |
+| `output` | Generated Markdown reports |
+
+Back up these three folders before replacing or deleting the package.
 
 ## Uninstall
-
-Use the included launcher instead of entering Docker commands yourself.
 
 Mac:
 
@@ -152,29 +227,44 @@ Windows:
 .\paper-monitor-windows-amd64.cmd uninstall
 ```
 
-The launcher removes the installed Paper Monitor image. By default, it keeps
-your settings, history, and reading lists so that you can use them again. It
-only deletes those files after you explicitly request a full cleanup and type
-`DELETE` when asked.
+The launcher removes the installed Paper Monitor image but keeps `config`,
+`data`, and `output` by default. A full cleanup only happens after you request
+it and type `DELETE` when prompted. The extracted package folder is never
+deleted automatically.
 
-For more help, see the
+For detailed setup, backup, troubleshooting, and checksum instructions, see the
 [full installation and usage guide](release/INSTALL_AND_USAGE.md).
 
 ## For developers
 
-The main program is `Paper_Monitor.R`. To build the container from source and
-run one cycle:
+Paper Monitor is an R command-line application. `Paper_Monitor.R` is the entry
+point, and the layers under `R/` implement RSS ingestion, configuration, LLM
+providers, scoring, output, and the interactive CLI.
+
+Build the development image and run one cycle:
 
 ```bash
 docker compose build
 docker compose up --no-build rss-paper
 ```
 
-To open the interactive menu from a source checkout:
+Open the interactive menu from a source checkout:
 
 ```bash
 docker compose run --rm -it rss-paper Rscript Paper_Monitor.R
 ```
 
-Release packages are built with `scripts/release/build.sh` from a matching Git
-version tag.
+Run the local test suite when R and the required packages are installed:
+
+```bash
+sh tests/run_all.sh
+```
+
+Release packages are assembled and verified by `scripts/release/build.sh` from
+a clean commit whose version matches its Git tag.
+
+## License
+
+Paper Monitor is provided under the repository's
+[Internal Use License](LICENSE). Redistribution and public publication require
+prior written permission.

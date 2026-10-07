@@ -135,7 +135,7 @@ Your files stay in these folders:
 
 - `config` — settings, including your API key
 - `data` — reading history
-- `output` — generated reading lists
+- `output` — generated Markdown reports
 
 Back up these three folders before replacing or deleting the package.
 
@@ -154,7 +154,7 @@ Windows:
 ```
 
 The launcher removes the installed Paper Monitor image. Press Enter when asked
-if you want to keep your settings, history, and reading lists. A full cleanup
+if you want to keep your settings, history, and reports. A full cleanup
 only happens if you request it and then type `DELETE`.
 
 The extracted package folder is not deleted automatically.
