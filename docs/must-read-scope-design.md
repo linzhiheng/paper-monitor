@@ -113,8 +113,9 @@ LLM response.
 
 The state records:
 
-- `phase`: `long_term`, `scope`, `focused`, or `review`.
-- Long-term answers, summary revisions, final summary, and question count.
+- `phase`: `long_term`, `extend`, `scope`, `focused`, or `review`.
+- Long-term answers, additional direction evidence, summary revisions, final
+  summary, and question count.
 - Selected `must_read_scope`.
 - Focused answers, proposal revisions, final proposal, and question count.
 - Interview language and tentative RSS-source context.
@@ -172,7 +173,10 @@ free-text clarification. The LLM must not add a generic Other option.
 
 Number lists accept commas, whitespace, and the conjunctions `和`, `と`, and
 the English word `and` between numbers. A single-choice question still rejects
-more than one selection.
+more than one selection. The CLI answer prompt states the accepted count
+(`one number` for single, `one or more numbers` for multiple), so no separate
+answer-mode label is displayed. The opening keyword question has no options;
+its `selection_mode` value is ignored and only free text is accepted.
 
 ### Phase 1: long-term profile
 
@@ -183,11 +187,10 @@ determine which papers are relevant enough to recommend.
 Phase-1 questions form a funnel that visibly narrows toward concrete research
 content:
 
-- The funnel descends one granularity level at a time: (1) discipline or field,
-  (2) sub-discipline or established research domain within the chosen family —
-  for example, within mathematics and physical sciences: mathematics,
-  statistics, physics, astronomy and space science, earth science, or
-  mechanics — (3) specific topics, systems, phenomena, or problem classes.
+- The funnel starts from the user's own keywords and then descends one
+  granularity level at a time: (1) the user's keywords for their target
+  research area, (2) sub-directions, problem classes, or aspects within those
+  keywords, (3) specific topics, systems, phenomena, or objects.
 - The profile's finest level is level 3, and the funnel descends along the
   research subject rather than the methodology. Methods, algorithms, model
   families, tools, theoretical guarantees, and individual datasets stay beyond
@@ -199,31 +202,44 @@ content:
   level is ambiguous, the interview asks another question at the same level
   about a different facet. Once a level is clear, it descends exactly one
   level.
-- Every question, its current inference, and its options stay at one level, as
-  peers of the same granularity.
-- When an answer contains several selections, the interview treats every one of
-  them as active — a conjunction rather than an either-or. When the selections
-  span different branches, it asks one question covering all of them or first
-  asks which is the primary line.
+- From the second question onward, the question, its current inference, and its
+  options stay at one level, as peers of the same granularity.
+- When an answer contains several keywords or selections, the interview treats
+  every one of them as active — a conjunction rather than an either-or. When
+  they span different branches, it asks one question covering all of them or
+  first asks which is the primary line.
 - When the latest answer is meta, evasive, or names no concrete item, the next
   question requests concrete content at the current level, such as 2–3
   keywords or a brief description. The CLI supplies free-text entry.
-- The first question asks for the broad discipline or field and offers 3–4
-  options that belong to different discipline families and span a wide range —
-  for example mathematics and physical sciences, chemistry, materials and
-  engineering, life and medical sciences, computing and information sciences,
-  or social sciences and humanities — which the user may combine. The
-  application enforces multiple selection for this opening question rather than
-  relying on the model.
+- The first question asks for the user's target research area as one or more
+  free-text keywords. It has no options: the model returns an empty options
+  list and puts 1–2 brief examples inside the question text instead of a
+  predefined field list.
+
+When enabled RSS sources exist, the first question instead uses the journal
+names and URLs as a tentative scope clue: it offers 2–4 candidate keywords
+derived from that scope as options, which the user may select, combine, or
+replace with their own keywords. Without RSS sources the question stays fully
+free-text.
 
 The question with the greatest information gain for the profile is selected
 first; its purpose line is written afterward and never influences the choice.
+
+After a long-term summary, and before the must-read scope question, the
+application asks a fixed follow-up question: whether the user has further
+research directions to add. The application, not the LLM, displays it, and it
+does not consume an LLM question. An empty answer continues to the scope
+question. A non-empty answer is stored as additional direction evidence, and
+the funnel resumes: every active direction is explored to the same depth
+before the next summary, after which the fixed follow-up question is asked
+again. When the 15-question hard ceiling is reached, the follow-up question is
+skipped and the flow continues to the scope question.
 
 The soft and hard question limits remain unchanged, but summarizing is gated
 by a profile-readiness check that takes priority over the count ladder. Before
 returning a summary, the LLM must verify that the profile:
 
-- names the core discipline or research direction,
+- names the user's target research area from their keywords,
 - names at least 2–3 concrete topics, systems, phenomena, or problem areas,
   and
 - contains at least two topics that could appear in a paper title or abstract.
@@ -240,9 +256,11 @@ scope question. It must not proceed directly to profile generation.
 ### Phase 2: deterministic scope question
 
 The application explains that general recommendations are already governed by
-the long-term profile, while the next choice determines whether `must_read`
-needs a narrower current focus. It does not display score bands, thresholds, or
-cap rules. The application, not the LLM, displays the two stable choices:
+the long-term profile, that `recommended` means worth a look while `must_read`
+means read now, and that narrowing the must-read scope keeps those papers on
+work directly related to the user's research. It does not display score bands,
+thresholds, or cap rules. The application, not the LLM, displays the two stable
+choices:
 
 1. Papers that strongly match my overall research direction.
 2. Only papers that directly match a narrower question, object, method, or
@@ -585,8 +603,10 @@ No dependency change is required.
    report behavior.
 3. Every generated question explains its recommendation-filtering purpose and
    does not expose numeric scoring rules.
-4. Questions declare single- or multiple-choice mode and accept one selection,
-   multiple selections, free text, or selections plus a clarification.
+4. Option-bearing questions declare single- or multiple-choice mode in their
+   answer prompt and accept one selection, multiple selections, free text, or
+   selections plus a clarification; the opening keyword question accepts free
+   text only.
 5. Long-term and focused counts are independent; the fixed scope question does
    not consume a focused question.
 6. A valid focused proposal contains one primary focus, a consistent
@@ -615,28 +635,34 @@ No dependency change is required.
 21. Research-direction output and custom templates remain compatible.
 22. All existing and new tests pass without real provider calls or writes to
     user data.
-23. Phase-1 questions form a funnel that descends one granularity level at a
-    time — discipline, then sub-discipline or research domain, then topics and
-    problem classes — and never jumps from a broad field to highly specific
-    topics. The profile's finest level is that third level, it descends along
-    the research subject rather than the methodology, and it does not descend
-    into methods, algorithms, model families, tools, theoretical guarantees,
-    or datasets. A level is clear only when its answers name at least one
-    concrete item and add no new unresolved branch; while it is unclear, the
-    interview asks further same-level questions, keeps each question,
-    inference, and option set at one level with peer options, treats every
-    selection in a multi-selection answer as active, and follows meta or
+23. Phase-1 questions form a funnel that starts from the user's own keywords
+    and descends one granularity level at a time — keywords, then
+    sub-directions or aspects, then topics and problem classes — and never
+    jumps to highly specific topics. The profile's finest level is that third
+    level, it descends along the research subject rather than the methodology,
+    and it does not descend into methods, algorithms, model families, tools,
+    theoretical guarantees, or datasets. A level is clear only when its
+    answers name at least one concrete item and add no new unresolved branch;
+    while it is unclear, the interview asks further same-level questions,
+    keeps each question, inference, and option set at one level with peer
+    options, treats every keyword or selection as active, and follows meta or
     non-specific answers with a concrete-content question at the current
     level.
-24. The opening discipline or field question uses multiple selection,
-    enforced by the application, and offers options from different discipline
-    families rather than several sub-areas of one family.
+24. The opening question asks for the user's target research area as one or
+    more free-text keywords with an empty options list; when enabled RSS
+    sources exist, it instead offers 2–4 candidate keywords derived from that
+    scope as options.
 25. Phase-1 summarizing is gated by the operationalized profile-readiness
     check, which takes priority over the count ladder; the 15-question hard
     ceiling is unchanged.
 26. The question-purpose line is written after the question is chosen, never
     changes which question is selected, and stays within one sentence of at
     most 25 words.
+27. After a long-term summary the application asks a fixed question about
+    additional research directions before the must-read scope question: an
+    empty answer advances to the scope question, a non-empty answer is stored
+    as direction evidence and resumes the funnel, and the 15-question hard
+    ceiling skips the question.
 
 ## Deferred enhancements
 
