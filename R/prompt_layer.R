@@ -11,7 +11,10 @@ suppressPackageStartupMessages({
 # --------------------------------------------------
 
 load_research_profile <- function(json_file) {
-  fromJSON(json_file, simplifyVector = FALSE)
+  profile <- normalize_research_profile(fromJSON(json_file, simplifyVector = FALSE))
+  checked <- validate_profile_draft(profile)
+  if (!isTRUE(checked$valid)) stop("Invalid research profile: ", checked$message)
+  checked$profile
 }
 
 # --------------------------------------------------
@@ -144,7 +147,10 @@ build_research_profile_prompt <- function(profile_or_file,
   profile <- if (is.character(profile_or_file)) {
     load_research_profile(profile_or_file)
   } else {
-    profile_or_file
+    normalized <- normalize_research_profile(profile_or_file)
+    checked <- validate_profile_draft(normalized)
+    if (!isTRUE(checked$valid)) stop("Invalid research profile: ", checked$message)
+    checked$profile
   }
 
   parts <- c("Research Profile")
@@ -179,12 +185,32 @@ build_research_profile_prompt <- function(profile_or_file,
 # build_research_profile_prompt().
 build_paper_prompt <- function(profile_or_file, model_size, title, abstract, sections = NULL) {
 
-  profile_prompt <- build_research_profile_prompt(profile_or_file,
+  profile <- if (is.character(profile_or_file)) load_research_profile(profile_or_file) else {
+    checked <- validate_profile_draft(normalize_research_profile(profile_or_file))
+    if (!isTRUE(checked$valid)) stop("Invalid research profile: ", checked$message)
+    checked$profile
+  }
+
+  profile_prompt <- build_research_profile_prompt(profile,
                                                     model_size = model_size,
                                                     sections = sections)
 
+  focused <- identical(profile$must_read_scope, "focused")
+  focus_prompt <- if (focused) paste0(
+    "\n\nMust-read focus (evaluate independently from general relevance):\n",
+    "Primary focus: ", profile$must_read_focus$primary_focus, "\n",
+    "Supporting signals: ", paste(unlist(profile$must_read_focus$supporting_signals), collapse = "; "), "\n",
+    "Primary-focus-only: ", profile$must_read_focus$primary_focus_only, "\n",
+    "Definition: ", profile$must_read_focus$must_read_definition, "\n",
+    "Return must_read_focus_match as one boolean and must_read_focus_reason as a non-empty explanation. A direct match is necessary, not sufficient, for must_read. Do not raise the general relevance score because of focus matching. If the abstract is absent or too weak to establish specificity, return false and say evidence is insufficient."
+  ) else ""
+  response_fields <- if (focused) {
+    ' "tldr": "",\n "must_read_focus_match": false,\n "must_read_focus_reason": ""\n'
+  } else ' "tldr": ""\n'
+
   paste0(
     profile_prompt,
+    focus_prompt,
 
     "\n\n",
     "Task: Evaluate an academic paper for relevance.\n\n",
@@ -243,7 +269,7 @@ build_paper_prompt <- function(profile_or_file, model_size, title, abstract, sec
     " \"category\": \"\",\n",
     " \"matched_topics\": [],\n",
     " \"reason\": \"\",\n",
-    " \"tldr\": \"\"\n",
+    response_fields,
     "}\n"
   )
 }

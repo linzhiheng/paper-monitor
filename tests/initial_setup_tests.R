@@ -35,6 +35,14 @@ expect_false(initial_setup_complete(missing_feed_status), "Missing feeds should 
 expect_true(identical(missing_feed_status[[2]]$id, "feeds") && !missing_feed_status[[2]]$complete, "Feed status should identify the missing requirement.")
 expect_true(identical(initial_setup_next_incomplete(missing_feed_status), 2L), "Setup should skip completed steps and continue with the first missing step.")
 
+partial_profile <- valid_profile
+partial_profile$must_read_scope <- "focused"
+partial_status <- initial_setup_status(
+  llm_cfg = new_llm_provider_config("ollama", "llama3.2"), feeds = feeds,
+  profile = partial_profile, output_cfg = list(output_folder = output_dir)
+)
+expect_false(partial_status[[3]]$complete, "A partially upgraded profile should keep initial setup incomplete.")
+
 paper_expressions <- parse("Paper_Monitor.R")
 initial_setup_expression <- paper_expressions[[which(vapply(paper_expressions, function(x) {
   startsWith(paste(deparse(x), collapse = ""), "action_initial_setup <-")

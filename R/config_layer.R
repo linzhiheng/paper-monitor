@@ -20,6 +20,6 @@ read_json_config <- function(path, default = list()) {
 }
 
 write_json_config <- function(config, path) {
-  jsonlite::write_json(config, path, auto_unbox = TRUE, pretty = TRUE)
+  jsonlite::write_json(config, path, auto_unbox = TRUE, pretty = TRUE, null = "null")
   invisible(config)
 }

@@ -176,7 +176,10 @@ the English word `and` between numbers. A single-choice question still rejects
 more than one selection. The CLI answer prompt states the accepted count
 (`one number` for single, `one or more numbers` for multiple), so no separate
 answer-mode label is displayed. The opening keyword question has no options;
-its `selection_mode` value is ignored and only free text is accepted.
+its `selection_mode` value is ignored and only free text is accepted. Invalid
+input is rejected with a localized, actionable message: a single-choice
+question that receives several numbers explains that it takes one answer and
+how to express more than one.
 
 ### Phase 1: long-term profile
 

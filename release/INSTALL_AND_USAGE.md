@@ -140,6 +140,13 @@ in a file named `Daily_Papers_<date>.md` in the `output` folder. If no new paper
 qualifies, the report says so instead of repeating a previous recommendation.
 The launcher closes when the report is ready.
 
+During profile setup, choose whether `must_read` follows your overall research
+direction or only a narrower current focus. In focused mode, general relevance
+still controls recommendations; only the highest-priority `must_read` label
+requires a direct focus match. Use **Settings > Researcher profile > Update
+must-read scope/focus** to change this later without rebuilding the long-term
+profile. Existing profiles are accepted without a manual migration.
+
 ### Run automatically
 
 First finish the initial setup and run the `run` command manually once. This
@@ -191,6 +198,10 @@ produces a new report of newly discovered papers relevant to your research.
 The result is a Markdown file that works in Obsidian and ordinary Markdown
 readers. It includes the paper title, journal, authors, link, relevance score,
 matched topics, short summary, and reason for the recommendation.
+Focused reports also explain the direct focus relationship separately from
+overall research relevance. New history rows retain the scope and focus used at
+evaluation time; the first expansion of an older history file creates a sibling
+backup named `recommendations.pre-must-read-scope.csv`.
 
 ![Example Paper Monitor output shown in Obsidian](assets/output-example.png)
 

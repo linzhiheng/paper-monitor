@@ -178,6 +178,13 @@ venues, and positive or negative signals. Paper Monitor can draft it through a
 guided interview in English, Chinese, or Japanese, or you can edit its fields
 manually.
 
+The interview also asks what `must_read` means. Keep **research direction**
+mode to use the full profile, or choose **focused** mode to reserve
+`must_read` for papers that directly match a current question, object, method,
+or goal. You can later update only this scope/focus without regenerating the
+long-term profile. Existing 15-field profiles remain valid in research-direction
+mode and are expanded only when you explicitly save the profile.
+
 ### AI and output settings
 
 The menu lets you change the provider and model, test the connection, set the
@@ -202,6 +209,11 @@ Each recommendation can include:
 - Topics matched from your research profile
 - A short summary of the paper
 - An explanation of why it may be relevant
+- In focused mode, a separate direct-focus match explanation
+
+Recommendation history records the scope and primary focus used for each new
+evaluation. Before an older history file is first expanded, Paper Monitor
+creates `recommendations.pre-must-read-scope.csv` beside it.
 
 Your persistent files stay next to the launcher:
 

@@ -18,6 +18,11 @@ run_daily_papers <- function(
     if (!is.null(progress_cb)) progress_cb(message, detail, value)
   }
 
+  # Validate before any RSS/network work so scheduled runs fail safely.
+  profile <- tryCatch(load_research_profile(json_file), error = function(e) {
+    stop("Researcher Profile is invalid. Open Settings > Researcher profile to repair it. ", conditionMessage(e), call. = FALSE)
+  })
+
   # RSS layer
   step("Fetching RSS feeds", value = 0.1)
   papers_raw      <- get_papers()
@@ -51,7 +56,7 @@ run_daily_papers <- function(
 
   # Scoring layer
   step(sprintf("Scoring %d papers with LLM", nrow(new_papers)), value = 0.5)
-  results_df <- process_papers_with_llm(new_papers, json_file, llm_config, model_size)
+  results_df <- process_papers_with_llm(new_papers, profile, llm_config, model_size)
 
   # Persist history
   step("Updating history", value = 0.8)

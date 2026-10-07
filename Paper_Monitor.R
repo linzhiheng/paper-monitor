@@ -69,11 +69,11 @@ suppressPackageStartupMessages({
 
 source("R/config_layer.R")
 source("R/rss_layer.R")
+source("R/profile_interview_layer.R")
 source("R/prompt_layer.R")
 source("R/llm_layer.R")
 source("R/cli_ui_layer.R")
 source("R/llm_provider_layer.R")
-source("R/profile_interview_layer.R")
 source("R/initial_setup_layer.R")
 source("R/scoring_layer.R")
 source("R/output_layer.R")
@@ -629,6 +629,15 @@ action_browse_recommendations <- function(recs) {
       r$title, r$authors, r$journal, r$pubdate, r$score, r$category,
       r$matched_topics, r$reason, r$doi, r$processed_date
     )
+    if ("must_read_scope" %in% names(r)) {
+      extra <- c(
+        paste("Must-read scope:", r$must_read_scope),
+        if ("must_read_primary_focus" %in% names(r) && !is.na(r$must_read_primary_focus) && nzchar(r$must_read_primary_focus)) paste("Primary focus:", r$must_read_primary_focus) else NULL,
+        if ("must_read_focus_match" %in% names(r)) paste("Focus match:", if (is.na(r$must_read_focus_match)) "not confirmed" else r$must_read_focus_match) else NULL,
+        if ("must_read_focus_reason" %in% names(r) && !is.na(r$must_read_focus_reason) && nzchar(r$must_read_focus_reason)) paste("Focus reason:", r$must_read_focus_reason) else NULL
+      )
+      info <- paste(c(info, extra), collapse = "\n")
+    }
     prompt_cli_page("Recommendation Detail", character(), c(b = "Back"), info)
   }
 }
@@ -701,6 +710,7 @@ action_manage_recommendations <- function() {
 # --------------------------------------------------
 
 print_profile_summary <- function(profile) {
+  profile <- normalize_research_profile(profile)
   cat(sprintf("Summary: %s\n", profile$researcher_summary %||% "(none)"))
   ci <- profile$core_interests
   if (!is.null(ci) && length(ci) > 0) {
@@ -711,27 +721,44 @@ print_profile_summary <- function(profile) {
                   "preferred_domains", "regional_interests", "frequent_keywords")) {
     cat(sprintf("%s: %d items\n", field, length(profile[[field]] %||% list())))
   }
+  cat("Must-read scope:", profile$must_read_scope %||% "invalid/missing", "\n")
+  if (identical(profile$must_read_scope, "focused") && !is.null(profile$must_read_focus)) {
+    cat("Primary focus:", profile$must_read_focus$primary_focus, "\n")
+  }
 }
 
-call_profile_interview_step <- function(state, config, force_summary = FALSE) {
+call_profile_validated <- function(prompt, config, validator, label) {
   for (attempt in 1:2) {
     response <- tryCatch(
-      call_llm(build_profile_interview_prompt(state, force_summary = force_summary), config, simplify = FALSE),
+      call_llm(prompt, config, simplify = FALSE),
       error = function(e) NULL
     )
-    checked <- validate_profile_interview_response(response, force_summary = force_summary)
+    checked <- validator(response)
     if (isTRUE(checked$valid)) return(checked$data)
-    cat("Interview response failed:", checked$message %||% "LLM call failed.", "\n")
-    if (attempt == 1) cat("Retrying the same interview step once...\n")
+    cat(label, "failed:", checked$message %||% "LLM call failed.", "\n")
+    if (attempt == 1) cat("Retrying once...\n")
   }
   NULL
 }
 
+call_profile_interview_step <- function(state, config, force_summary = FALSE) {
+  allow_no_options <- profile_interview_question_count(state) == 0L && !length(state$rss_sources)
+  call_profile_validated(
+    build_profile_interview_prompt(state, force_summary), config,
+    function(x) validate_profile_interview_response(x, force_summary, allow_no_options),
+    "Long-term interview step"
+  )
+}
+
+call_focused_interview_step <- function(state, config, force_proposal = FALSE, saved_profile = NULL) {
+  call_profile_validated(
+    build_focused_interview_prompt(state, force_proposal, saved_profile), config,
+    function(x) validate_focused_interview_response(x, force_proposal), "Focused interview step"
+  )
+}
+
 call_profile_draft <- function(state, summary, config) {
-  draft_config <- config
-  configured_tokens <- suppressWarnings(as.integer(draft_config$max_tokens %||% 0L))
-  if (is.na(configured_tokens)) configured_tokens <- 0L
-  draft_config$max_tokens <- max(configured_tokens, 4096L)
+  draft_config <- normalize_profile_interview_llm_config(config)
 
   for (attempt in 1:2) {
     draft <- tryCatch(
@@ -739,41 +766,94 @@ call_profile_draft <- function(state, summary, config) {
       error = function(e) NULL
     )
     checked <- validate_profile_draft(draft)
-    if (isTRUE(checked$valid)) return(draft)
+    if (isTRUE(checked$valid)) return(checked$profile)
     cat("Profile draft failed:", checked$message %||% "LLM call failed.", "\n")
     if (attempt == 1) cat("Retrying profile generation once...\n")
   }
   NULL
 }
 
-prompt_profile_interview_answer <- function(options, info, can_revise = FALSE) {
+prompt_profile_interview_answer <- function(step, info, can_revise = FALSE) {
+  options <- step$options
   repeat {
     commands <- c(f = "Finish and summarize", if (can_revise) c(r = "Revise previous answer") else character(), c = "Discard")
     cat(paste(cli_page_lines("Profile Interview", options,
                              commands, info), collapse = "\n"), "\n")
-    cat(sprintf("Your answer [1-%d or free text]: ", length(options)))
+    hint <- if (!length(options)) "text" else if (identical(step$selection_mode, "multiple")) "one or more numbers, or text" else "one number, or text"
+    cat(sprintf("Your answer [%s]: ", hint))
     answer <- read_stdin_line()
     nav <- cli_parse_navigation(answer, length(options), commands)
-    if (identical(nav$kind, "select")) return(list(status = "answer", answer = options[[nav$value]]))
+    if (identical(nav$kind, "select")) return(list(status = "answer", answer = list(selected_options = list(options[[nav$value]]), free_text = "")))
     if (identical(nav$value, "f")) return(list(status = "finish", answer = NULL))
     if (identical(nav$value, "r")) return(list(status = "revise", answer = NULL))
     if (identical(nav$value, "c")) return(list(status = "cancel", answer = NULL))
-    resolved <- resolve_profile_interview_answer(answer, options)
-    if (identical(resolved$status, "other")) {
-      other_answer <- prompt_text("Other answer", "")
-      if (nzchar(other_answer)) return(list(status = "answer", answer = other_answer))
-      cat("Please enter an answer.\n")
-      next
-    }
+    resolved <- resolve_profile_interview_answer(answer, options, step$selection_mode)
     if (identical(resolved$status, "invalid")) {
-      cat("Enter an option number, another answer, /finish, or /cancel.\n")
+      cat(if (identical(resolved$reason, "single_multiple")) "This is single-choice; enter one number or describe multiple items in text.\n" else "Enter valid option numbers, text, /finish, or /cancel.\n")
       next
     }
     return(resolved)
   }
 }
 
-action_draft_profile <- function() {
+choose_must_read_scope <- function(state, config) {
+  text <- switch(state$language,
+    "中文" = list(purpose = "长期 profile 已决定哪些论文值得推荐。recommended 表示值得一看，must_read 表示现在就该读；收紧范围可限定为当前研究直接相关的论文。", q = "must_read 应该表示什么？", broad = "与整体研究方向高度相关的论文。", focused = "只限于直接匹配更具体问题、对象、方法或目标的论文。"),
+    "日本語" = list(purpose = "長期プロファイルが推薦対象を決めます。recommended は見る価値がある、must_read は今読むという意味です。", q = "must_read は何を意味しますか？", broad = "研究方向全体に強く関連する論文。", focused = "具体的な問い・対象・手法・目的に直接一致する論文のみ。"),
+    list(purpose = "The long-term profile already decides general recommendations. recommended means worth a look; must_read means read now.", q = "Within recommended papers, what should must_read mean?", broad = "Papers strongly matching my overall research direction.", focused = "Only papers directly matching a narrower question, object, method, or goal.")
+  )
+  repeat {
+    cat("\n", text$purpose, "\n", text$q, "\n1. ", text$broad, "\n2. ", text$focused, "\nAnswer [1-2, free text, or c]: ", sep = "")
+    answer <- read_stdin_line()
+    if (tolower(answer) == "c") return(NULL)
+    if (answer %in% c("1", "2")) {
+      state$must_read_scope <- if (answer == "1") "research_direction" else "focused"
+      state$phase <- if (answer == "1") "review" else "focused"
+      if (answer == "1") state["focus_proposal"] <- list(NULL)
+      return(state)
+    }
+    if (!nzchar(answer)) next
+    classified <- call_profile_validated(build_scope_classifier_prompt(state, answer), config, validate_scope_classifier_response, "Scope classification")
+    if (is.null(classified)) return(NULL)
+    cat("Interpretation:", classified$interpretation, "\n")
+    if (classified$scope == "unclear") next
+    state$must_read_scope <- classified$scope
+    state$scope_free_text <- if (classified$scope == "focused") answer else NULL
+    state$phase <- if (classified$scope == "focused") "focused" else "review"
+    if (classified$scope == "research_direction") state["focus_proposal"] <- list(NULL)
+    return(state)
+  }
+}
+
+run_focused_interview <- function(state, config, saved_profile = NULL) {
+  pending <- NULL
+  repeat {
+    force <- focused_interview_question_count(state) >= FOCUSED_INTERVIEW_HARD_LIMIT
+    step <- pending %||% call_focused_interview_step(state, config, force, saved_profile)
+    pending <- NULL
+    if (is.null(step)) return(NULL)
+    if (step$action == "propose_focus") {
+      state$focus_proposal <- step
+      state$phase <- "review"
+      return(state)
+    }
+    info <- c(paste("Purpose:", step$question_purpose), paste("Current inference:", step$current_inference), "", paste("Question:", step$question))
+    reply <- prompt_profile_interview_answer(step, info, focused_interview_question_count(state) > 0L)
+    if (reply$status == "cancel") return(NULL)
+    if (reply$status == "revise") {
+      revised <- profile_interview_revise_phase_answer(state, "focused")
+      state <- revised$state; pending <- revised$step; next
+    }
+    if (reply$status == "finish") {
+      proposal <- call_focused_interview_step(state, config, TRUE, saved_profile)
+      if (is.null(proposal)) return(NULL)
+      state$focus_proposal <- proposal; state$phase <- "review"; return(state)
+    }
+    state <- profile_interview_add_structured_answer(state, "focused", step, reply$answer)
+  }
+}
+
+action_draft_profile_legacy <- function() {
   llm_cfg <- read_json_config(file.path(CONFIG_DIR, "llm_config.json"), default = NULL)
   if (is.null(llm_cfg) || !nzchar(llm_cfg$backend %||% "")) {
     cat("\nNo LLM backend is configured. Set one up under 'LLM settings' before starting the guided profile interview.\n")
@@ -868,7 +948,7 @@ action_draft_profile <- function() {
     }
 
     draft_info <- c(capture.output(print_profile_summary(draft)), "", "Raw JSON:",
-                    as.character(jsonlite::toJSON(draft, auto_unbox = TRUE, pretty = TRUE)))
+                    as.character(jsonlite::toJSON(draft, auto_unbox = TRUE, pretty = TRUE, null = "null")))
     draft_nav <- prompt_cli_page("Review Profile Draft", character(), c(s = "Save", e = "Return to summary and add detail", c = "Discard"), draft_info)
     if (identical(draft_nav$value, "s")) {
       write_json_config(draft, file.path(CONFIG_DIR, "research_profile.json"))
@@ -893,15 +973,128 @@ action_draft_profile <- function() {
   }
 }
 
+run_long_term_interview <- function(state, config) {
+  pending <- NULL
+  repeat {
+    step <- pending %||% call_profile_interview_step(state, config, profile_interview_force_summary(state))
+    pending <- NULL
+    if (is.null(step)) return(NULL)
+    if (step$action == "summarize") {
+      state$long_term_summary <- step$summary
+      return(profile_advance_after_summary(state))
+    }
+    info <- c(paste("Purpose:", step$question_purpose), paste("Current inference:", step$current_inference), "", paste("Question:", step$question))
+    reply <- prompt_profile_interview_answer(step, info, profile_interview_question_count(state) > 0L)
+    if (reply$status == "cancel") return(NULL)
+    if (reply$status == "revise") {
+      revised <- profile_interview_revise_phase_answer(state, "long_term")
+      state <- revised$state; pending <- revised$step; next
+    }
+    if (reply$status == "finish") {
+      summary <- call_profile_interview_step(state, config, TRUE)
+      if (is.null(summary)) return(NULL)
+      state$long_term_summary <- summary$summary
+      return(profile_advance_after_summary(state))
+    }
+    state <- profile_interview_add_structured_answer(state, "long_term", step, reply$answer)
+  }
+}
+
+profile_review_info <- function(state) {
+  focus <- state$focus_proposal
+  c("Long-term research profile:", state$long_term_summary, "", paste("Must-read scope:", state$must_read_scope),
+    if (identical(state$must_read_scope, "focused")) c(
+      paste("Primary focus:", focus$primary_focus),
+      paste("Supporting signals:", paste(unlist(focus$supporting_signals), collapse = "; ")),
+      paste("Primary-focus-only:", focus$primary_focus_only),
+      paste("Definition:", focus$must_read_definition)
+    ) else NULL)
+}
+
+action_draft_profile <- function() {
+  llm_cfg <- read_json_config(file.path(CONFIG_DIR, "llm_config.json"), default = NULL)
+  if (is.null(llm_cfg) || !nzchar(llm_cfg$backend %||% "")) {
+    cat("No LLM backend is configured. Configure LLM settings first.\n")
+    return(invisible(NULL))
+  }
+  config <- normalize_profile_interview_llm_config(llm_cfg)
+  language_nav <- prompt_cli_page("Interview Language", PROFILE_INTERVIEW_LANGUAGES, c(b = "Back"),
+    "Requests may send enabled RSS journal names/URLs, accumulated interview context, answers, and corrections to the configured endpoint. The transcript is not saved.")
+  if (identical(language_nav$value, "b")) return(invisible(NULL))
+  state <- new_profile_interview_state(load_feeds_config(), PROFILE_INTERVIEW_LANGUAGES[[language_nav$value]])
+
+  repeat {
+    if (state$phase == "long_term") {
+      state <- run_long_term_interview(state, config)
+      if (is.null(state)) break
+    }
+    if (state$phase == "extend") {
+      cat("\nLong-term understanding:\n", state$long_term_summary, "\nDo you have further research directions to add?\nAnswer [keywords; Enter to continue; c = cancel]: ", sep = "")
+      answer <- read_stdin_line()
+      if (tolower(answer) == "c") { state <- NULL; break }
+      state <- profile_apply_extension(state, answer)
+      next
+    }
+    if (state$phase == "scope") {
+      state <- choose_must_read_scope(state, config)
+      if (is.null(state)) break
+    }
+    if (state$phase == "focused") {
+      state <- run_focused_interview(state, config)
+      if (is.null(state)) break
+    }
+    if (state$phase == "review") {
+      commands <- c(g = "Generate English profile draft", l = "Revise long-term understanding",
+        if (identical(state$must_read_scope, "focused")) c(f = "Revise focus proposal", p = "Return to previous focused question") else character(), c = "Discard")
+      review <- prompt_cli_page("Final Understanding", character(), commands, profile_review_info(state))
+      if (review$value == "c") { state <- NULL; break }
+      if (review$value == "l") {
+        revision <- prompt_text("Long-term correction", "")
+        if (nzchar(revision)) state <- profile_interview_add_summary_revision(state, revision)
+        summary <- call_profile_interview_step(state, config, TRUE)
+        if (is.null(summary)) { state <- NULL; break }
+        state$long_term_summary <- summary$summary
+        state$must_read_scope <- NULL; state$scope_free_text <- NULL
+        state$focused_answers <- list(); state["focus_proposal"] <- list(NULL); state$phase <- "scope"
+        next
+      }
+      if (review$value == "f") {
+        correction <- prompt_text("Focus correction or additional detail", "")
+        if (nzchar(correction)) state$scope_free_text <- paste(c(state$scope_free_text, correction), collapse = "\n")
+        state$focused_answers <- list(); state["focus_proposal"] <- list(NULL); state$phase <- "focused"; next
+      }
+      if (review$value == "p") {
+        revised <- profile_interview_revise_phase_answer(state, "focused")
+        state <- revised$state; state["focus_proposal"] <- list(NULL); state$phase <- "focused"; next
+      }
+
+      draft <- call_profile_draft(state, state$long_term_summary, config)
+      if (is.null(draft)) { state <- NULL; break }
+      nav <- prompt_cli_page("Review Profile Draft", character(), c(s = "Save", b = "Back to understanding", c = "Discard"),
+        c(capture.output(print_profile_summary(draft)), "", "Raw JSON:", as.character(jsonlite::toJSON(draft, auto_unbox = TRUE, pretty = TRUE, null = "null"))))
+      if (nav$value == "s") {
+        write_json_config(draft, file.path(CONFIG_DIR, "research_profile.json")); cat("Saved to config/research_profile.json\n"); return(invisible(draft))
+      }
+      if (nav$value == "c") { state <- NULL; break }
+    }
+  }
+  cat("Interview discarded or failed. Existing profile was not changed.\n")
+  invisible(NULL)
+}
+
 empty_profile_template <- function() {
   fields <- setNames(rep(list(list()), length(PROFILE_FIELDS)), PROFILE_FIELDS)
   fields$weak_negative_note <- ""
   fields$researcher_summary <- ""
+  fields$must_read_scope <- "research_direction"
+  fields["must_read_focus"] <- list(NULL)
   fields
 }
 
 profile_field_summary <- function(profile, field) {
   val <- profile[[field]]
+  if (field == "must_read_scope") return(val %||% "(missing)")
+  if (field == "must_read_focus") return(if (is.null(val)) "(none)" else substr(val$primary_focus %||% "(incomplete)", 1, 50))
   if (field %in% PROFILE_STRING_FIELDS) {
     if (is.null(val) || !nzchar(val)) "(empty)" else substr(val, 1, 50)
   } else {
@@ -973,7 +1166,22 @@ edit_topic_aliases <- function(dict) {
 }
 
 edit_profile_field <- function(profile, field) {
-  if (field %in% PROFILE_STRING_FIELDS) {
+  if (field == "must_read_scope") {
+    nav <- prompt_cli_page("Must-read Scope", c("Research direction", "Focused"), c(b = "Back"))
+    if (!identical(nav$value, "b")) {
+      profile$must_read_scope <- c("research_direction", "focused")[[nav$value]]
+      if (nav$value == 1L) profile["must_read_focus"] <- list(NULL)
+    }
+  } else if (field == "must_read_focus") {
+    focus <- profile$must_read_focus %||% list(primary_focus = "", supporting_signals = list(), primary_focus_only = TRUE, must_read_definition = "")
+    focus$primary_focus <- prompt_text("Primary focus", focus$primary_focus)
+    focus$supporting_signals <- edit_string_list(focus$supporting_signals, "Supporting Signals")
+    focus$primary_focus_only <- prompt_yes_no("Use primary focus only?", focus$primary_focus_only)
+    if (focus$primary_focus_only) focus$supporting_signals <- list()
+    focus$must_read_definition <- prompt_text("Must-read definition", focus$must_read_definition)
+    profile$must_read_scope <- "focused"
+    profile$must_read_focus <- focus
+  } else if (field %in% PROFILE_STRING_FIELDS) {
     profile[[field]] <- prompt_text(field, profile[[field]] %||% "")
   } else if (field == "core_interests") {
     profile$core_interests <- edit_core_interests(profile$core_interests %||% list())
@@ -986,12 +1194,15 @@ edit_profile_field <- function(profile, field) {
 }
 
 action_manual_edit_profile <- function(profile) {
+  profile <- normalize_research_profile(profile)
   repeat {
     labels <- sprintf("%-22s %s", PROFILE_FIELDS,
                        vapply(PROFILE_FIELDS, function(f) profile_field_summary(profile, f), character(1)))
     nav <- prompt_cli_page("Manual Researcher Profile", labels, c(s = "Save", c = "Discard"))
     if (identical(nav$value, "s")) {
-      write_json_config(profile, file.path(CONFIG_DIR, "research_profile.json"))
+      checked <- validate_profile_draft(profile)
+      if (!checked$valid) { cat("Cannot save:", checked$message, "\n"); next }
+      write_json_config(checked$profile, file.path(CONFIG_DIR, "research_profile.json"))
       cat("Saved to config/research_profile.json\n")
       return(invisible(NULL))
     }
@@ -1001,18 +1212,71 @@ action_manual_edit_profile <- function(profile) {
   }
 }
 
+call_focus_translation <- function(state, config, saved_profile) {
+  prompt <- paste0(
+    "Translate the confirmed focus into concise English scientific filtering criteria without changing intent. Generalize identifying details. Return ONLY JSON with exactly primary_focus, supporting_signals, primary_focus_only, must_read_definition.\n\n",
+    jsonlite::toJSON(state$focus_proposal[setdiff(names(state$focus_proposal), "action")], auto_unbox = TRUE)
+  )
+  validator <- function(value) {
+    checked <- validate_must_read_focus(value)
+    list(valid = checked$valid, message = checked$message, data = if (checked$valid) value else NULL)
+  }
+  call_profile_validated(prompt, config, validator, "Focus translation")
+}
+
+action_update_must_read <- function(profile) {
+  checked <- validate_profile_draft(profile)
+  if (!checked$valid) { cat("Profile is invalid:", checked$message, "\n"); return(invisible(NULL)) }
+  original <- checked$profile
+  llm_cfg <- read_json_config(file.path(CONFIG_DIR, "llm_config.json"), default = NULL)
+  if (is.null(llm_cfg)) { cat("Configure an LLM first.\n"); return(invisible(NULL)) }
+  config <- normalize_profile_interview_llm_config(llm_cfg)
+  language_nav <- prompt_cli_page("Interview Language", PROFILE_INTERVIEW_LANGUAGES, c(b = "Back"),
+    "The saved long-term profile/current focus and interview context may be sent to the configured endpoint. Only an explicitly saved focus is persisted.")
+  if (language_nav$value == "b") return(invisible(NULL))
+  state <- new_profile_interview_state(load_feeds_config(), PROFILE_INTERVIEW_LANGUAGES[[language_nav$value]])
+  state$long_term_summary <- original$researcher_summary
+  if (identical(original$must_read_scope, "focused")) state$focus_proposal <- c(list(action = "propose_focus"), original$must_read_focus)
+  state$phase <- "scope"
+  state <- choose_must_read_scope(state, config)
+  if (is.null(state)) return(invisible(NULL))
+  if (state$must_read_scope == "research_direction") {
+    nav <- prompt_cli_page("Confirm Must-read Update", character(), c(s = "Save", c = "Discard"), "Use the overall research direction for must_read.")
+    if (nav$value != "s") return(invisible(NULL))
+    updated <- original; updated$must_read_scope <- "research_direction"; updated["must_read_focus"] <- list(NULL)
+  } else {
+    state <- run_focused_interview(state, config, original)
+    if (is.null(state)) return(invisible(NULL))
+    localized <- profile_review_info(state)
+    focus <- call_focus_translation(state, config, original)
+    if (is.null(focus)) return(invisible(NULL))
+    nav <- prompt_cli_page("Confirm Must-read Update", character(), c(s = "Save", c = "Discard"),
+      c(localized, "", "Final English focus:", as.character(jsonlite::toJSON(focus, auto_unbox = TRUE, pretty = TRUE))))
+    if (nav$value != "s") return(invisible(NULL))
+    updated <- original; updated$must_read_scope <- "focused"; updated$must_read_focus <- focus
+  }
+  final <- validate_profile_draft(updated)
+  if (!final$valid) { cat("Update not saved:", final$message, "\n"); return(invisible(NULL)) }
+  write_json_config(final$profile, file.path(CONFIG_DIR, "research_profile.json"))
+  cat("Saved must-read scope/focus. Long-term profile fields were unchanged.\n")
+  invisible(final$profile)
+}
+
 action_research_profile <- function(exit_commands = c(b = "Back")) {
   exit_key <- names(exit_commands)[[1]]
   repeat {
     profile <- read_json_config(file.path(CONFIG_DIR, "research_profile.json"), default = NULL)
     info <- if (is.null(profile)) "No profile configured yet." else capture.output(print_profile_summary(profile))
-    commands <- c(if (!is.null(profile)) c(v = "View raw JSON") else character(), g = "Draft with LLM", e = if (is.null(profile)) "Create manually" else "Edit manually", exit_commands)
+    profile_check <- if (is.null(profile)) list(valid = FALSE) else validate_profile_draft(profile)
+    commands <- c(if (!is.null(profile)) c(v = "View raw JSON") else character(), if (isTRUE(profile_check$valid)) c(u = "Update must-read scope/focus") else character(), g = "Draft with LLM", e = if (is.null(profile)) "Create manually" else "Edit manually", exit_commands)
     nav <- prompt_cli_page("Researcher Profile", character(), commands, info)
     if (identical(nav$value, exit_key)) return(invisible(NULL))
     if (identical(nav$value, "v")) {
-      prompt_cli_page("Researcher Profile JSON", character(), c(b = "Back"), as.character(jsonlite::toJSON(profile, auto_unbox = TRUE, pretty = TRUE)))
+      prompt_cli_page("Researcher Profile JSON", character(), c(b = "Back"), as.character(jsonlite::toJSON(profile, auto_unbox = TRUE, pretty = TRUE, null = "null")))
     } else if (identical(nav$value, "g")) {
       action_draft_profile()
+    } else if (identical(nav$value, "u")) {
+      action_update_must_read(profile)
     } else {
       action_manual_edit_profile(profile %||% empty_profile_template())
     }

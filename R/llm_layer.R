@@ -383,7 +383,7 @@ collect_claude_batch <- function(batch_id, config) {
     }
 
     text <- result$message$content[[1]]$text
-    parsed <- tryCatch(fromJSON(text), error = function(e) NULL)
+    parsed <- parse_llm_json_text(text, simplify = FALSE, label = paste("Claude Batch", custom_id))
     results[[custom_id]] <- parsed
   }
 

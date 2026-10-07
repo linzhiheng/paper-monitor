@@ -94,6 +94,13 @@ warn_unknown_placeholders <- function(rendered_lines) {
   }
 }
 
+compose_report_reason <- function(scope, focus_match, focus_reason, overall_reason) {
+  if (is.na(scope) || !identical(as.character(scope), "focused")) return(as.character(overall_reason))
+  label <- if (isTRUE(focus_match)) "Direct match" else if (identical(focus_match, FALSE)) "Not a direct match" else "Match not confirmed"
+  detail <- if (is.na(focus_reason) || !nzchar(trimws(as.character(focus_reason)))) "No focus explanation was available." else as.character(focus_reason)
+  paste0("Focus: ", label, " — ", detail, " Overall relevance: ", overall_reason)
+}
+
 # --------------------------------------------------
 # Markdown digest builder
 # --------------------------------------------------
@@ -120,11 +127,14 @@ build_digest_lines <- function(results_df, threshold) {
 
   tmpl <- read_paper_template()
   for (i in seq_len(nrow(digest))) {
+    scope <- if ("must_read_scope" %in% names(digest)) digest$must_read_scope[i] else NA_character_
+    focus_match <- if ("must_read_focus_match" %in% names(digest)) digest$must_read_focus_match[i] else NA
+    focus_reason <- if ("must_read_focus_reason" %in% names(digest)) digest$must_read_focus_reason[i] else ""
     paper <- list(
       doi = digest$doi[i], title = digest$title[i], score = digest$score[i],
       category = digest$category[i], matched_topics = digest$matched_topics[i],
       journal = digest$journal[i], authors = digest$authors[i],
-      pubdate = digest$pubdate[i], reason = digest$reason[i],
+      pubdate = digest$pubdate[i], reason = compose_report_reason(scope, focus_match, focus_reason, digest$reason[i]),
       tldr = digest$tldr[i],
       abstract = digest$abstract[i], paper_number = i
     )

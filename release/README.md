@@ -79,6 +79,12 @@ only papers that have not already been analyzed to your AI service, up to the
 configured maximum, and scores them against your research profile. Papers that
 meet your recommendation threshold are included in a new report.
 
+Your profile can use the overall research direction for `must_read`, or a
+narrower current focus. Focused mode does not remove otherwise relevant papers:
+it only requires a confirmed direct focus match before a paper can be marked
+`must_read`. The profile menu can update this scope/focus without changing the
+saved long-term interests. Older profiles continue to work automatically.
+
 Mac:
 
 ```bash
