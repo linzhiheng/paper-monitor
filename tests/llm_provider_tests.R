@@ -24,4 +24,18 @@ expect_false(llm_config_is_configured(new_llm_provider_config("deepseek", "deeps
 expect_true(llm_config_is_configured(new_llm_provider_config("ollama", "llama3.2")), "Ollama does not require an API key.")
 expect_false(llm_config_is_configured(new_llm_provider_config("custom_openai_compatible", "model", api_key = "key")), "Custom compatible providers require a Base URL.")
 
+smart_quote_json <- '{"question":"围绕“地震/海啸”，你更关注什么？","options":[]}'
+expect_true(identical(parse_llm_json_text(smart_quote_json, simplify = FALSE)$question,
+                      "围绕“地震/海啸”，你更关注什么？"),
+            "Valid JSON with typographic quotes should parse without losing them.")
+bare_quote_json <- '{"question":"围绕"地震/海啸"，你更关注什么？","options":[]}'
+expect_true(identical(parse_llm_json_text(bare_quote_json, simplify = FALSE, label = "Test")$question,
+                      "围绕\"地震/海啸\"，你更关注什么？"),
+            "Unescaped quotes inside a string value should be repaired.")
+healthy_json <- '{"action":"summarize","summary":"ok"}'
+expect_true(identical(escape_inner_json_quotes(healthy_json), healthy_json),
+            "The inner-quote repair should be a no-op for well-formed JSON.")
+expect_true(identical(parse_llm_json_text(healthy_json, simplify = FALSE)$summary, "ok"),
+            "Well-formed JSON should parse unchanged.")
+
 cat("llm_provider_tests: PASS\n")

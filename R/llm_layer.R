@@ -68,6 +68,85 @@ clean_llm_json_text <- function(text) {
   text
 }
 
+# Models also quote terms inside JSON string values with bare " characters
+# (e.g. "question":"围绕"地震/海啸"，…") or with typographic “ ” quotes that
+# clean_llm_json_text() rewrites into bare ASCII quotes. Both turn otherwise
+# valid JSON into invalid JSON. This escapes every quote that cannot be a
+# structural closing, so it is a no-op for well-formed JSON.
+escape_inner_json_quotes <- function(text) {
+  chars <- strsplit(text, "")[[1]]
+  if (length(chars) == 0L) return(text)
+  out <- character(length(chars))
+  in_string <- FALSE
+  escaped <- FALSE
+  for (i in seq_along(chars)) {
+    ch <- chars[i]
+    if (escaped) {
+      out[i] <- ch
+      escaped <- FALSE
+      next
+    }
+    if (identical(ch, "\\")) {
+      out[i] <- ch
+      escaped <- TRUE
+      next
+    }
+    if (!identical(ch, "\"")) {
+      out[i] <- ch
+      next
+    }
+    if (!in_string) {
+      in_string <- TRUE
+      out[i] <- ch
+      next
+    }
+    rest <- if (i < length(chars)) chars[(i + 1L):length(chars)] else character(0)
+    rest <- rest[!rest %in% c(" ", "\t", "\n", "\r")]
+    following <- if (length(rest) > 0L) rest[1] else ""
+    if (!nzchar(following) || following %in% c(":", ",", "}", "]")) {
+      in_string <- FALSE
+      out[i] <- ch
+    } else {
+      out[i] <- "\\\""
+    }
+  }
+  paste0(out, collapse = "")
+}
+
+# Parsing escalates from lossless to lossy and keeps the first candidate that
+# parses: the raw text with inner quotes escaped (typographic quotes survive),
+# then the historical clean path, then the clean path with inner quotes
+# escaped. The historical path alone is lossy: rewriting “ ” into " inside a
+# string value invalidates JSON that was previously valid.
+parse_llm_json_text <- function(text, simplify = TRUE, label = "LLM") {
+  if (!is.character(text) || !nzchar(trimws(text))) {
+    message(label, " JSON parse failed: no content")
+    return(NULL)
+  }
+  attempts <- list(
+    raw = escape_inner_json_quotes(text),
+    cleaned = clean_llm_json_text(text),
+    cleaned_escaped = escape_inner_json_quotes(clean_llm_json_text(text))
+  )
+  last_error <- "unknown parse error"
+  for (name in names(attempts)) {
+    attempted <- attempts[[name]]
+    parsed <- tryCatch(
+      fromJSON(attempted, simplifyVector = simplify),
+      error = function(e) {
+        last_error <<- conditionMessage(e)
+        NULL
+      }
+    )
+    if (!is.null(parsed)) {
+      if (!identical(attempted, text)) message(label, " JSON repaired before parsing.")
+      return(parsed)
+    }
+  }
+  message(label, " JSON parse failed: ", last_error)
+  NULL
+}
+
 # --------------------------------------------------
 # Ollama backend
 # --------------------------------------------------
@@ -87,13 +166,7 @@ call_ollama <- function(prompt, config, simplify = TRUE) {
 
   result <- resp_body_json(resp)
 
-  tryCatch(
-    fromJSON(clean_llm_json_text(result$response), simplifyVector = simplify),
-    error = function(e) {
-      message("Ollama JSON parse failed: ", e$message)
-      NULL
-    }
-  )
+  parse_llm_json_text(result$response, simplify = simplify, label = "Ollama")
 }
 
 # --------------------------------------------------
@@ -132,13 +205,7 @@ call_claude <- function(prompt, config, simplify = TRUE) {
   body <- resp_body_json(resp)
   text <- body$content[[1]]$text
 
-  tryCatch(
-    fromJSON(clean_llm_json_text(text), simplifyVector = simplify),
-    error = function(e) {
-      message("Claude JSON parse failed: ", e$message)
-      NULL
-    }
-  )
+  parse_llm_json_text(text, simplify = simplify, label = "Claude")
 }
 
 # --------------------------------------------------
@@ -177,13 +244,7 @@ call_deepseek <- function(prompt, config, simplify = TRUE) {
   body <- resp_body_json(resp)
   text <- body$choices[[1]]$message$content
 
-  tryCatch(
-    fromJSON(clean_llm_json_text(text), simplifyVector = simplify),
-    error = function(e) {
-      message("DeepSeek JSON parse failed: ", e$message)
-      NULL
-    }
-  )
+  parse_llm_json_text(text, simplify = simplify, label = "DeepSeek")
 }
 
 # --------------------------------------------------
@@ -219,13 +280,7 @@ call_openai_compatible <- function(prompt, config, simplify = TRUE) {
   body <- resp_body_json(resp)
   text <- body$choices[[1]]$message$content
 
-  tryCatch(
-    fromJSON(clean_llm_json_text(text), simplifyVector = simplify),
-    error = function(e) {
-      message("OpenAI-compatible JSON parse failed: ", e$message)
-      NULL
-    }
-  )
+  parse_llm_json_text(text, simplify = simplify, label = "OpenAI-compatible")
 }
 
 # --------------------------------------------------
