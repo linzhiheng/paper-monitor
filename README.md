@@ -1,6 +1,6 @@
 # Paper Monitor
 
-Paper Monitor is a repeatable workflow for keeping up with new research. Each
+Paper Monitor is a repeatable pipline for keeping up with new research. Each
 run fetches the latest entries available from your selected journal RSS feeds,
 skips papers it has already analyzed whether or not they were recommended, and
 uses an AI model to evaluate the remaining papers against your research
