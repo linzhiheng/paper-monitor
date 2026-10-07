@@ -1,6 +1,6 @@
 Package: PaperMonitor
 Title: Daily Academic Paper RSS Monitoring and LLM Scoring Pipeline
-Version: 0.1.3
+Version: 0.2.0
 Imports:
     xml2,
     dplyr,

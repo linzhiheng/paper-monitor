@@ -20,3 +20,7 @@ dist/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Local interview prototype
+prototypes/
+tests/must_read_interview_prototype_tests.R

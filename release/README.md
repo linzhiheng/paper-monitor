@@ -1,4 +1,4 @@
-# Paper Monitor v0.1.3
+# Paper Monitor v0.2.0
 
 __PACKAGE_DESCRIPTION__
 

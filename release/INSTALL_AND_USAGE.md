@@ -1,4 +1,4 @@
-# Paper Monitor v0.1.3 — Installation and Usage
+# Paper Monitor v0.2.0 — Installation and Usage
 
 Paper Monitor is a repeatable workflow for keeping up with new research. Each
 run fetches the latest entries available from your selected journal RSS feeds,

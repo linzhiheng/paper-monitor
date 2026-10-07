@@ -12,7 +12,7 @@ launcher_path <- function(name) file.path(launcher_root, name)
 description <- readLines("DESCRIPTION", warn = FALSE, encoding = "UTF-8")
 version_line <- description[startsWith(description, "Version:")]
 version <- trimws(sub("^Version:", "", version_line))
-expect_true(identical(version, "0.1.3"), "DESCRIPTION should declare version 0.1.3.")
+expect_true(identical(version, "0.2.0"), "DESCRIPTION should declare version 0.2.0.")
 
 mac_launcher_path <- launcher_path("paper-monitor-macos-arm64.sh")
 mac_launcher <- read_text(mac_launcher_path)
@@ -46,12 +46,12 @@ expect_true(
 
 for (launcher in c(mac_launcher, windows_ps1)) {
   expect_true(
-    grepl("paper-monitor:v0.1.3", launcher, fixed = TRUE),
-    "Each platform launcher should use the v0.1.3 image tag."
+    grepl("paper-monitor:v0.2.0", launcher, fixed = TRUE),
+    "Each platform launcher should use the v0.2.0 image tag."
   )
   expect_true(
-    grepl("paper-monitor-v0.1.3-linux-", launcher, fixed = TRUE),
-    "Each platform launcher should load a v0.1.3 image archive."
+    grepl("paper-monitor-v0.2.0-linux-", launcher, fixed = TRUE),
+    "Each platform launcher should load a v0.2.0 image archive."
   )
 }
 

@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 $RootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $RootDir
-$ImageTag = "paper-monitor:v0.1.3"
+$ImageTag = "paper-monitor:v0.2.0"
 
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
   throw "Docker Desktop is required."
@@ -81,7 +81,7 @@ if ($ServerArch -ne "amd64" -and $ServerArch -ne "x86_64") {
 
 docker image inspect $ImageTag | Out-Null
 if ($LASTEXITCODE -ne 0) {
-  docker load -i ".\images\paper-monitor-v0.1.3-linux-amd64.tar.gz"
+  docker load -i ".\images\paper-monitor-v0.2.0-linux-amd64.tar.gz"
 }
 
 $ImageArch = docker image inspect --format '{{.Architecture}}' $ImageTag
