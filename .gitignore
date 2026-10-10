@@ -5,21 +5,32 @@
 .RData
 .Rhistory
 .Rproj.user/
+renv/library/
+renv/staging/
+renv/python/
+renv/local/
+renv/cellar/
 
 # Local secrets (API keys)
 .Renviron
 .env
-config/llm_config.json
-config/llm_backends.json
+config/*.json
 
 # Runtime-generated state
-config/feed_status.json
 data/
 output/
 dist/
+recommendations*.csv
+Daily_Papers_*.md
 
-# Claude Code local settings
-.claude/settings.local.json
+# Local agent instructions and state
+.claude/
+.codex/
+.agents/
+AGENTS.md
+CLAUDE.md
+HANDOFF.md
+docs/
 
 # Local interview prototype
 prototypes/
