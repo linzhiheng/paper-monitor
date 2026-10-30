@@ -78,6 +78,7 @@ source("R/initial_setup_layer.R")
 source("R/scoring_layer.R")
 source("R/output_layer.R")
 source("R/pipeline_layer.R")
+source("R/backlog_layer.R")
 
 # --------------------------------------------------
 # Startup LLM connection check
@@ -594,14 +595,18 @@ RECOMMENDATIONS_FILE <- recommendations_file_path()
 
 read_recommendations <- function() {
   if (!file.exists(RECOMMENDATIONS_FILE)) return(data.frame())
-  read.csv(RECOMMENDATIONS_FILE, stringsAsFactors = FALSE)
+  normalize_history_data(read.csv(RECOMMENDATIONS_FILE, stringsAsFactors = FALSE))
+}
+
+.recommendation_score_label <- function(score) {
+  if (length(score) == 0L || is.na(score)) "—" else format(score, trim = TRUE)
 }
 
 print_recommendations_page <- function(recs, start, end) {
   vapply(start:end, function(i) {
     sprintf(
       "[%-20s] score=%-3s %-60s (%s)",
-      recs$category[i], recs$score[i],
+      recs$category[i], .recommendation_score_label(recs$score[i]),
       substr(recs$title[i], 1, 60), recs$processed_date[i]
     )
   }, character(1))
@@ -624,9 +629,11 @@ action_browse_recommendations <- function(recs) {
     if (identical(nav$value, "p")) { page <- page - 1; next }
     row <- start + nav$value - 1L
     r <- recs[row, ]
+    score_label <- .recommendation_score_label(r$score)
+    if (identical(r$category, "ignored")) score_label <- paste(score_label, "(not scored)")
     info <- sprintf(
       "Title: %s\nAuthors: %s\nJournal: %s\nDate: %s\nScore: %s  Category: %s\nMatched topics: %s\nReason: %s\nDOI: %s\nProcessed: %s",
-      r$title, r$authors, r$journal, r$pubdate, r$score, r$category,
+      r$title, r$authors, r$journal, r$pubdate, score_label, r$category,
       r$matched_topics, r$reason, r$doi, r$processed_date
     )
     if ("must_read_scope" %in% names(r)) {
@@ -649,8 +656,13 @@ action_manage_recommendations <- function() {
     if (nrow(recs) == 0) {
       info <- "No recommendations recorded yet."
     } else {
-      info <- c(sprintf("Total: %d", nrow(recs)), "By category:", capture.output(print(table(recs$category))),
-                "By processed date:", capture.output(print(table(recs$processed_date))))
+      ignored_count <- if ("category" %in% names(recs)) sum(recs$category == "ignored", na.rm = TRUE) else 0L
+      info <- c(
+        sprintf("Total: %d", nrow(recs)),
+        if (ignored_count > 0) sprintf("Ignored (not scored): %d", ignored_count),
+        "By category:", capture.output(print(table(recs$category))),
+        "By processed date:", capture.output(print(table(recs$processed_date)))
+      )
     }
     commands <- if (nrow(recs) == 0) c(b = "Back") else c(v = "Browse", d = "Delete all", c = "Delete by category", e = "Delete by date", b = "Back")
     nav <- prompt_cli_page("Recommendation History", character(), commands, info)
@@ -1284,6 +1296,234 @@ action_research_profile <- function(exit_commands = c(b = "Back")) {
 }
 
 # --------------------------------------------------
+# First-run backlog helper
+# --------------------------------------------------
+
+.action_backlog_exit_deferred <- function(backlog_count = 0L) {
+  save_backlog_decision(new_backlog_decision("deferred", backlog_count = backlog_count))
+  invisible(FALSE)
+}
+
+action_backlog_setup <- function(force = FALSE) {
+  if (!isTRUE(force) && !backlog_decision_pending()) return(invisible(FALSE))
+
+  if (isTRUE(force)) {
+    current <- tryCatch(load_backlog_decision(), error = function(e) NULL)
+    if (!is.null(current)) {
+      cat(sprintf("Current backlog decision: %s\n", backlog_decision_label(current)))
+      if (!prompt_yes_no("Re-run backlog handling? This rescans the feeds and may overwrite the decision.", FALSE)) {
+        return(invisible(FALSE))
+      }
+    }
+  }
+
+  llm_config <- read_json_config(file.path(CONFIG_DIR, "llm_config.json"), default = NULL)
+  output_config <- read_json_config(file.path(CONFIG_DIR, "output_config.json"), default = NULL)
+  profile <- tryCatch(
+    load_research_profile(file.path(CONFIG_DIR, "research_profile.json")),
+    error = function(e) NULL
+  )
+
+  if (is.null(llm_config) || !nzchar(llm_config$backend %||% "")) {
+    cat("LLM backend is not configured. Finish LLM settings first.\n")
+    return(invisible(FALSE))
+  }
+  if (is.null(profile)) {
+    cat("Research profile is invalid. Finish the researcher profile first.\n")
+    return(invisible(FALSE))
+  }
+  if (is.null(output_config) || !nzchar(output_config$output_folder %||% "")) {
+    cat("Output folder is not configured. Finish Output settings first.\n")
+    return(invisible(FALSE))
+  }
+
+  repeat {
+    cat("Scanning enabled RSS feeds...\n")
+    scan <- tryCatch(scan_backlog(), error = function(e) e)
+    if (inherits(scan, "error")) {
+      cat("Backlog scan failed:", conditionMessage(scan), "\n")
+      if (prompt_yes_no("Retry the scan?", TRUE)) next
+      return(invisible(FALSE))
+    }
+    if (scan$new_count > 0L) break
+    if (nrow(scan$failed_feeds) > 0L) {
+      cat("No new papers were found, but", nrow(scan$failed_feeds),
+          "feed(s) failed; the result may be incomplete.\n")
+      if (prompt_yes_no("Retry the scan?", TRUE)) next
+    }
+    cat("No new papers to handle.\n")
+    save_backlog_decision(new_backlog_decision("skip_all", backlog_count = 0L))
+    return(invisible(TRUE))
+  }
+
+  estimate_all <- tryCatch(
+    estimate_backlog(scan$papers, profile, llm_config, output_config, output_mode = "full"),
+    error = function(e) NULL
+  )
+  summary_info <- backlog_summary_lines(scan, estimate_all, output_config)
+  if (file.exists(BACKLOG_BATCH_STATE_FILE)) {
+    summary_info <- c(
+      summary_info,
+      "A previous Batch submission is waiting; choosing 'Process the backlog now' will resume collecting it instead of submitting again. If that batch is no longer usable, delete config/backlog_batch.json and re-run."
+    )
+  }
+
+  repeat {
+    nav <- prompt_cli_page(
+      "First-run Backlog", backlog_new_items(), c(c = "Decide later"), summary_info
+    )
+    if (identical(nav$value, "c")) return(.action_backlog_exit_deferred(scan$new_count))
+
+    if (nav$value == 1L) {
+      scope_nav <- prompt_cli_page(
+        "Backlog Scope", backlog_scope_items(), c(b = "Back"),
+        "Choose how much of the backlog to score now. The rest can be ignored."
+      )
+      if (identical(scope_nav$value, "b")) next
+
+      selected <- scan$papers
+      ignored <- scan$papers[0, , drop = FALSE]
+      scope <- "all"
+      recent_n <- NULL
+      if (scope_nav$value == 2L) {
+        recent_n <- suppressWarnings(as.integer(prompt_text(
+          sprintf("Most recent papers (1-%d)", scan$new_count),
+          as.character(min(BACKLOG_RECENT_N_DEFAULT, scan$new_count))
+        )))
+        if (is.na(recent_n) || recent_n <= 0L) {
+          cat("Enter a positive whole number.\n")
+          next
+        }
+        recent_n <- min(recent_n, scan$new_count)
+        split <- split_backlog_by_recency(scan$papers, recent_n)
+        selected <- split$selected
+        ignored <- split$ignored
+        scope <- "recent_n"
+      }
+
+      output_nav <- prompt_cli_page(
+        "Backlog Output", backlog_output_items(), c(b = "Back"),
+        "Choose what the one-time backlog digest should contain."
+      )
+      if (identical(output_nav$value, "b")) next
+
+      output_mode <- c("full", "must_read", "top_n")[[output_nav$value]]
+      top_n <- NULL
+      if (identical(output_mode, "top_n")) {
+        top_n <- suppressWarnings(as.integer(prompt_text(
+          "Number of highest-scoring papers to output",
+          as.character(min(BACKLOG_TOP_N_DEFAULT, nrow(selected)))
+        )))
+        if (is.na(top_n) || top_n <= 0L) {
+          cat("Enter a positive whole number.\n")
+          next
+        }
+        top_n <- min(top_n, nrow(selected))
+      }
+
+      estimate <- tryCatch(
+        estimate_backlog(selected, profile, llm_config, output_config,
+                         output_mode = output_mode,
+                         top_n = if (is.null(top_n)) BACKLOG_TOP_N_DEFAULT else top_n),
+        error = function(e) e
+      )
+      if (inherits(estimate, "error")) {
+        cat("Could not estimate this backlog:", conditionMessage(estimate), "\n")
+        next
+      }
+
+      confirm_info <- backlog_confirm_lines(
+        nrow(selected), nrow(ignored), output_mode,
+        if (is.null(top_n)) BACKLOG_TOP_N_DEFAULT else top_n, estimate
+      )
+      if (!prompt_yes_no(paste(confirm_info, collapse = "\n"), FALSE)) next
+
+      cat("Processing", nrow(selected), "papers...\n")
+      result <- tryCatch(
+        run_backlog_papers(
+          papers = selected,
+          ignored_papers = ignored,
+          profile = profile,
+          llm_config = llm_config,
+          output_config = output_config,
+          output_mode = output_mode,
+          top_n = top_n
+        ),
+        error = function(e) e
+      )
+      if (inherits(result, "error")) {
+        cat("Backlog processing failed:", conditionMessage(result), "\n")
+        cat("No decision was saved; already-scored papers are kept and will be skipped on retry.\n")
+        next
+      }
+
+      save_backlog_decision(new_backlog_decision(
+        "process_now",
+        scope = scope,
+        recent_n = recent_n,
+        output = output_mode,
+        top_n = top_n,
+        backlog_count = scan$new_count,
+        processed_count = if (is.null(result$processed_count)) nrow(selected) else result$processed_count,
+        ignored_count = if (is.null(result$ignored_count)) nrow(ignored) else result$ignored_count
+      ))
+      cat("Backlog digest written to:", result$digest_file, "\n")
+      if (!is.null(result$selected_count) && !is.null(result$processed_count) &&
+          result$processed_count < result$selected_count) {
+        cat(sprintf(
+          "Scored %d of %d selected papers; failures are not recorded and will be retried on later runs.\n",
+          result$processed_count, result$selected_count
+        ))
+      }
+      return(invisible(TRUE))
+    }
+
+    if (nav$value == 2L) {
+      max_papers <- .backlog_max_papers(output_config)
+      if (max_papers <= 0L) {
+        cat("max_papers must be greater than 0. Change it in Output settings first.\n")
+        next
+      }
+      drain_info <- backlog_drain_info_lines(scan, estimate_all, output_config)
+      if (!prompt_yes_no(paste(drain_info, collapse = "\n"), TRUE)) next
+      save_backlog_decision(new_backlog_decision("daily_drain", backlog_count = scan$new_count))
+      cat("Saved. Daily runs will process up to", max_papers, "new papers per run.\n")
+      return(invisible(TRUE))
+    }
+
+    if (nav$value == 3L) {
+      if (!prompt_yes_no(paste(backlog_skip_info_lines(scan), collapse = "\n"), FALSE)) next
+      history <- tryCatch(
+        load_history(recommendations_file_path()),
+        error = function(e) {
+          cat("Could not read recommendation history:", conditionMessage(e), "\n")
+          NULL
+        }
+      )
+      if (is.null(history)) next
+      remaining <- deduplicate_papers(scan$papers, history)
+      recorded <- tryCatch({
+        record_ignored_papers(
+          remaining, history, recommendations_file_path(), profile, BACKLOG_IGNORE_REASON
+        )
+        TRUE
+      }, error = function(e) {
+        cat("Could not record the ignored papers:", conditionMessage(e), "\n")
+        FALSE
+      })
+      if (!recorded) next
+      save_backlog_decision(new_backlog_decision(
+        "skip_all",
+        backlog_count = scan$new_count,
+        ignored_count = nrow(remaining)
+      ))
+      cat("Recorded", nrow(remaining), "ignored papers. They will not be scored later.\n")
+      return(invisible(TRUE))
+    }
+  }
+}
+
+# --------------------------------------------------
 # First-run setup helper
 # --------------------------------------------------
 
@@ -1292,9 +1532,25 @@ action_initial_setup <- function() {
     status <- initial_setup_status()
     complete <- initial_setup_complete(status)
     if (complete) {
-      nav <- prompt_cli_page("Initial Setup", initial_setup_labels(status), c(b = "Back"),
-                             "All required settings are ready. Select a step to review or change it.")
+      if (backlog_decision_pending()) {
+        tryCatch(action_backlog_setup(), error = function(e) {
+          cat("Backlog setup error:", conditionMessage(e), "\n")
+        })
+        if (!backlog_decision_pending()) next
+      }
+      info <- c(
+        "All required settings are ready. Select a step to review or change it.",
+        paste("Backlog:", backlog_decision_status_label())
+      )
+      nav <- prompt_cli_page("Initial Setup", initial_setup_labels(status),
+                             c(k = "Backlog handling", b = "Back"), info)
       if (identical(nav$value, "b")) return(invisible(TRUE))
+      if (identical(nav$value, "k")) {
+        tryCatch(action_backlog_setup(force = TRUE), error = function(e) {
+          cat("Backlog setup error:", conditionMessage(e), "\n")
+        })
+        next
+      }
       step_index <- nav$value
     } else {
       step_index <- initial_setup_next_incomplete(status)

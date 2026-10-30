@@ -39,7 +39,11 @@ Each run:
   Society, and selected Springer Earth-science journals, or add your own RSS
   address.
 - **No repeated analysis** — successful results are kept in local history and
-  deduplicated by DOI on later runs.
+  deduplicated by DOI, or by title and journal when a feed omits the DOI.
+- **First-run backlog choice** — after selecting feeds for the first time, decide
+  whether to process the existing backlog now, drain it through daily runs, or
+  skip it. Skipped papers are recorded without a score so they are not analyzed
+  later, and you can undo that from the recommendation history.
 - **Useful reports** — each recommendation includes a relevance score, matched
   topics, citation details, a short summary, and an explanation.
 - **Flexible AI providers** — use Anthropic, OpenAI, DeepSeek, another
@@ -98,6 +102,14 @@ opens the interactive menu. Initial setup guides you through:
 2. Selecting one or more journal feeds.
 3. Creating your research profile through an interview or manual entry.
 4. Confirming the output folder. Use `/app/output` for the release package.
+
+If your feeds already contain many papers, setup then offers a one-time backlog
+choice: process everything now (full report, must-read only, or the
+highest-scoring N papers), drain it through daily runs, or skip it. Skipped
+papers are recorded in history without a score, so they are not analyzed later;
+you can undo that by deleting the `ignored` category in **Manage
+recommendations**. Processing the backlog now writes a separate
+`Backlog_<date>.md` file and does not overwrite the daily report.
 
 ### 3. Run the pipeline
 
@@ -219,7 +231,7 @@ Your persistent files stay next to the launcher:
 
 | Folder | Contents |
 | --- | --- |
-| `config` | RSS feeds, research profile, AI settings, output settings, and report template |
+| `config` | RSS feeds, research profile, AI settings, output settings, backlog decision, and report template |
 | `data` | Analysis history used to prevent repeated processing |
 | `output` | Generated Markdown reports |
 

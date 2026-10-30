@@ -105,17 +105,24 @@ compose_report_reason <- function(scope, focus_match, focus_reason, overall_reas
 # Markdown digest builder
 # --------------------------------------------------
 
-build_digest_lines <- function(results_df, threshold) {
+build_digest_lines <- function(results_df, threshold, max_output = NULL,
+                               header_extra = character(), count_label = "Recommended papers") {
 
   digest <- results_df |>
     filter(score >= threshold) |>
     arrange(desc(score))
 
+  if (!is.null(max_output)) {
+    max_output <- suppressWarnings(as.integer(max_output))
+    if (!is.na(max_output) && max_output >= 0L) digest <- head(digest, max_output)
+  }
+
   lines <- c(
     "---",
     sprintf("Generated: %s", Sys.Date()),
+    as.character(header_extra),
     sprintf("Papers analyzed: %d", nrow(results_df)),
-    sprintf("Recommended papers: %d", nrow(digest)),
+    sprintf("%s: %d", count_label, nrow(digest)),
     "",
     "---",
     ""

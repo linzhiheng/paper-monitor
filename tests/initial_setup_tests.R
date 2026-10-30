@@ -83,6 +83,9 @@ run_initial_setup_step_test <- function(step_index) {
     expect_true(step_index == 4L && identical(exit_commands, expected_cancel), "Output setup should receive the cancel command vector.")
     state$finished <- TRUE
   }
+  backlog_decision_pending <<- function(...) FALSE
+  backlog_decision_status_label <<- function(...) "not decided"
+  action_backlog_setup <<- function(...) stop("Backlog setup should not run when a decision already exists.")
   expect_true(action_initial_setup(), sprintf("Initial setup step %d should complete.", step_index))
 }
 
@@ -108,6 +111,9 @@ action_manage_feeds <- function(exit_commands = c(b = "Back"), setup_mode = FALS
 }
 action_research_profile <- function(...) stop("Cancellation should not advance to profile setup.")
 action_output_settings <- function(...) stop("Cancellation should not advance to output setup.")
+backlog_decision_pending <- function(...) stop("Backlog setup should not be reached during cancellation.")
+backlog_decision_status_label <- function(...) stop("Backlog status should not be reached during cancellation.")
+action_backlog_setup <- function(...) stop("Backlog setup should not be reached during cancellation.")
 expect_false(action_initial_setup(), "Cancelling RSS setup should leave initial setup immediately.")
 
 cat("initial_setup_tests: PASS\n")

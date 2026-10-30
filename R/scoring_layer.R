@@ -10,16 +10,92 @@ suppressPackageStartupMessages({
 # History management
 # --------------------------------------------------
 
-load_history <- function(history_file) {
-  if (file.exists(history_file)) {
-    read.csv(history_file, stringsAsFactors = FALSE)
-  } else {
-    data.frame(doi = character(), stringsAsFactors = FALSE)
-  }
+.normalize_history_text <- function(x) {
+  x <- ifelse(is.na(x), "", as.character(x))
+  tolower(trimws(gsub("\\s+", " ", x)))
 }
 
+.dedup_doi_key <- function(doi) {
+  key <- .normalize_history_text(doi)
+  ifelse(nzchar(key), paste0("doi:", key), NA_character_)
+}
+
+.dedup_title_journal_key <- function(title, journal) {
+  title <- .normalize_history_text(title)
+  journal <- .normalize_history_text(journal)
+  ifelse(nzchar(title), paste0("title:", title, "|journal:", journal), NA_character_)
+}
+
+normalize_history_data <- function(history) {
+  if (!is.data.frame(history) || ncol(history) == 0L) return(history)
+  if ("doi" %in% names(history)) history$doi <- as.character(history$doi)
+  if ("score" %in% names(history)) history$score <- suppressWarnings(as.numeric(history$score))
+  if ("must_read_focus_match" %in% names(history)) {
+    history$must_read_focus_match <- as.logical(history$must_read_focus_match)
+  }
+  history
+}
+
+load_history <- function(history_file) {
+  if (!file.exists(history_file)) {
+    return(data.frame(doi = character(), stringsAsFactors = FALSE))
+  }
+  normalize_history_data(read.csv(history_file, stringsAsFactors = FALSE))
+}
+
+# Papers are treated as already seen when either their DOI or their
+# title+journal pair matches a history row. The fallback is needed for feeds
+# that omit DOIs and for deliberately ignored papers recorded without a score.
 deduplicate_papers <- function(papers, history) {
-  papers |> filter(!(doi %in% history$doi))
+  if (nrow(papers) == 0L) return(papers)
+
+  history_doi_keys <- if ("doi" %in% names(history)) .dedup_doi_key(history$doi) else character()
+  history_title_keys <- if (all(c("title", "journal") %in% names(history))) {
+    .dedup_title_journal_key(history$title, history$journal)
+  } else {
+    character()
+  }
+
+  paper_doi_keys <- if ("doi" %in% names(papers)) {
+    .dedup_doi_key(papers$doi)
+  } else {
+    rep(NA_character_, nrow(papers))
+  }
+  paper_title_keys <- if (all(c("title", "journal") %in% names(papers))) {
+    .dedup_title_journal_key(papers$title, papers$journal)
+  } else {
+    rep(NA_character_, nrow(papers))
+  }
+
+  duplicate <- (!is.na(paper_doi_keys) & paper_doi_keys %in% history_doi_keys) |
+    (!is.na(paper_title_keys) & paper_title_keys %in% history_title_keys)
+  papers[!duplicate, , drop = FALSE]
+}
+
+.ignored_paper_row <- function(paper, profile, reason) {
+  scope <- profile$must_read_scope
+  if (is.null(scope) || length(scope) == 0L || is.na(scope)) scope <- NA_character_
+  focus <- ""
+  if (identical(scope, "focused")) {
+    focus <- profile$must_read_focus$primary_focus
+    if (is.null(focus) || length(focus) == 0L || is.na(focus)) focus <- ""
+  }
+  data.frame(
+    doi = paper$doi, title = paper$title, authors = paper$authors, abstract = paper$abstract,
+    journal = paper$journal, pubdate = as.character(paper$pubdate), score = NA_real_,
+    category = "ignored", matched_topics = "", reason = reason, tldr = "",
+    processed_date = as.character(Sys.Date()), must_read_scope = scope,
+    must_read_primary_focus = focus, must_read_focus_match = NA,
+    must_read_focus_reason = "", stringsAsFactors = FALSE
+  )
+}
+
+record_ignored_papers <- function(papers, history, history_file, profile, reason) {
+  if (nrow(papers) == 0L) return(invisible(history))
+  rows <- dplyr::bind_rows(lapply(seq_len(nrow(papers)), function(i) {
+    .ignored_paper_row(papers[i, , drop = FALSE], profile, reason)
+  }))
+  update_history(history, rows, history_file)
 }
 
 update_history <- function(history, results_df, history_file) {
@@ -31,7 +107,7 @@ update_history <- function(history, results_df, history_file) {
       stop("Could not create the recommendation-history backup: ", backup)
     }
   }
-  updated <- dplyr::bind_rows(history, results_df)
+  updated <- normalize_history_data(dplyr::bind_rows(history, results_df))
   write.csv(updated, history_file, row.names = FALSE)
   invisible(updated)
 }
@@ -153,7 +229,7 @@ evaluate_paper <- function(
 # Sequential processing (Ollama / Claude direct)
 # --------------------------------------------------
 
-.process_sequential <- function(new_papers, json_file, config, model_size) {
+.process_sequential <- function(new_papers, json_file, config, model_size, on_result = NULL) {
 
   profile <- if (is.character(json_file)) load_research_profile(json_file) else json_file
   results <- list()
@@ -190,47 +266,147 @@ evaluate_paper <- function(
       next
     }
 
-    results[[length(results) + 1]] <- .paper_result_row(new_papers[i, , drop = FALSE], ai)
+    row <- .paper_result_row(new_papers[i, , drop = FALSE], ai)
+    results[[length(results) + 1]] <- row
+    if (!is.null(on_result)) on_result(row)
   }
 
   if (length(results)) dplyr::bind_rows(results) else .empty_paper_results()
 }
 
 # --------------------------------------------------
+# Batch checkpoint state
+# --------------------------------------------------
+
+BACKLOG_BATCH_STATE_VERSION <- 1L
+
+.save_batch_state <- function(batch_id, papers, custom_ids, path) {
+  records <- lapply(seq_len(nrow(papers)), function(i) {
+    list(
+      doi = papers$doi[i] %||% NA_character_,
+      title = papers$title[i] %||% NA_character_,
+      authors = papers$authors[i] %||% NA_character_,
+      abstract = papers$abstract[i] %||% NA_character_,
+      journal = papers$journal[i] %||% NA_character_,
+      pubdate = as.character(papers$pubdate[i])
+    )
+  })
+  write_json_config(list(
+    version = BACKLOG_BATCH_STATE_VERSION,
+    created_at = as.character(Sys.time()),
+    batch_id = batch_id,
+    papers = records,
+    custom_ids = as.list(unname(custom_ids))
+  ), path)
+  invisible(path)
+}
+
+.load_batch_state <- function(path) {
+  if (!file.exists(path)) return(NULL)
+  state <- tryCatch(
+    read_json_config(path, default = NULL),
+    error = function(e) {
+      stop(
+        "Batch state file is unreadable: ", path,
+        ". Delete it only if you are sure the batch cannot be collected.",
+        call. = FALSE
+      )
+    }
+  )
+  if (is.null(state) || is.null(state$batch_id) || !nzchar(state$batch_id)) {
+    stop("Batch state file is missing its batch id: ", path, call. = FALSE)
+  }
+  if (is.null(state$papers) || length(state$papers) == 0L) {
+    stop("Batch state file has no paper manifest: ", path, call. = FALSE)
+  }
+
+  papers <- dplyr::bind_rows(lapply(state$papers, function(p) {
+    data.frame(
+      doi = p$doi %||% NA_character_,
+      title = p$title %||% NA_character_,
+      authors = p$authors %||% NA_character_,
+      abstract = p$abstract %||% NA_character_,
+      journal = p$journal %||% NA_character_,
+      pubdate = p$pubdate %||% NA_character_,
+      stringsAsFactors = FALSE
+    )
+  }))
+  custom_ids <- as.character(unlist(state$custom_ids, use.names = FALSE))
+  if (length(custom_ids) != nrow(papers)) {
+    stop("Batch state file has mismatched papers and custom ids: ", path, call. = FALSE)
+  }
+  list(batch_id = state$batch_id, papers = papers, custom_ids = custom_ids)
+}
+
+.batch_paper_is_current <- function(state_papers, current_papers) {
+  state_doi <- .dedup_doi_key(state_papers$doi)
+  state_title <- .dedup_title_journal_key(state_papers$title, state_papers$journal)
+  current_doi <- .dedup_doi_key(current_papers$doi)
+  current_title <- .dedup_title_journal_key(current_papers$title, current_papers$journal)
+  matched <- (!is.na(state_doi) & state_doi %in% current_doi) |
+    (!is.na(state_title) & state_title %in% current_title)
+  unmatched <- is.na(state_doi) & is.na(state_title)
+  matched | unmatched
+}
+
+# --------------------------------------------------
 # Batch processing (Claude Batch API)
 # --------------------------------------------------
 
-.process_batch <- function(new_papers, json_file, config, model_size) {
+.process_batch <- function(new_papers, json_file, config, model_size, on_result = NULL,
+                           checkpoint_file = NULL) {
 
   profile <- if (is.character(json_file)) load_research_profile(json_file) else json_file
+  state <- if (!is.null(checkpoint_file)) .load_batch_state(checkpoint_file) else NULL
 
-  cat("Building batch prompts...\n")
+  if (!is.null(state)) {
+    cat("Resuming batch", state$batch_id, "...\n")
+    batch_id <- state$batch_id
+    papers_for_batch <- state$papers
+    custom_ids <- state$custom_ids
+  } else {
+    cat("Building batch prompts...\n")
 
-  requests <- lapply(seq_len(nrow(new_papers)), function(i) {
-    list(
-      custom_id = sprintf("paper-%04d", i),
-      prompt    = build_paper_prompt(
-        profile_or_file = profile,
-        model_size      = model_size,
-        title           = new_papers$title[i],
-        abstract        = new_papers$abstract[i]
+    requests <- lapply(seq_len(nrow(new_papers)), function(i) {
+      list(
+        custom_id = sprintf("paper-%04d", i),
+        prompt    = build_paper_prompt(
+          profile_or_file = profile,
+          model_size      = model_size,
+          title           = new_papers$title[i],
+          abstract        = new_papers$abstract[i]
+        )
       )
-    )
-  })
+    })
 
-  cat("Submitting batch (", length(requests), "papers)...\n")
-  batch  <- submit_claude_batch(requests, config)
-  cat("Batch ID:", batch$id, "\n")
+    cat("Submitting batch (", length(requests), "papers)...\n")
+    batch  <- submit_claude_batch(requests, config)
+    batch_id <- batch$id
+    papers_for_batch <- new_papers
+    custom_ids <- sprintf("paper-%04d", seq_len(nrow(new_papers)))
+
+    if (!is.null(checkpoint_file)) {
+      .save_batch_state(batch_id, papers_for_batch, custom_ids, checkpoint_file)
+    }
+  }
+
+  cat("Batch ID:", batch_id, "\n")
 
   poll_interval <- config$poll_interval %||% 30L
-  poll_claude_batch(batch$id, config, poll_interval = poll_interval)
+  poll_claude_batch(batch_id, config, poll_interval = poll_interval)
 
   cat("Collecting results...\n")
-  results_raw <- collect_claude_batch(batch$id, config)
+  results_raw <- collect_claude_batch(batch_id, config)
+
+  keep <- rep(TRUE, nrow(papers_for_batch))
+  if (!is.null(state)) {
+    keep <- .batch_paper_is_current(papers_for_batch, new_papers)
+  }
 
   results <- list()
-  for (i in seq_len(nrow(new_papers))) {
-    custom_id <- sprintf("paper-%04d", i)
+  for (i in seq_len(nrow(papers_for_batch))) {
+    if (!keep[i]) next
+    custom_id <- custom_ids[i]
     ai        <- results_raw[[custom_id]]
     if (is.null(ai)) next
     checked <- validate_and_finalize_paper_result(ai, profile)
@@ -238,7 +414,13 @@ evaluate_paper <- function(
       warning("Skipping ", custom_id, ": ", checked$message, call. = FALSE)
       next
     }
-    results[[length(results) + 1]] <- .paper_result_row(new_papers[i, , drop = FALSE], checked$data)
+    row <- .paper_result_row(papers_for_batch[i, , drop = FALSE], checked$data)
+    results[[length(results) + 1]] <- row
+    if (!is.null(on_result)) on_result(row)
+  }
+
+  if (!is.null(checkpoint_file) && file.exists(checkpoint_file)) {
+    file.remove(checkpoint_file)
   }
 
   if (length(results)) dplyr::bind_rows(results) else .empty_paper_results()
@@ -248,12 +430,16 @@ evaluate_paper <- function(
 # Unified dispatcher
 # --------------------------------------------------
 
-process_papers_with_llm <- function(new_papers, json_file, config, model_size) {
+process_papers_with_llm <- function(new_papers, json_file, config, model_size, on_result = NULL,
+                                    batch_checkpoint_file = NULL) {
   backend <- config$backend %||% "ollama"
 
   if (backend == "claude_batch") {
-    .process_batch(new_papers, json_file, config, model_size)
+    .process_batch(
+      new_papers, json_file, config, model_size,
+      on_result = on_result, checkpoint_file = batch_checkpoint_file
+    )
   } else {
-    .process_sequential(new_papers, json_file, config, model_size)
+    .process_sequential(new_papers, json_file, config, model_size, on_result = on_result)
   }
 }
